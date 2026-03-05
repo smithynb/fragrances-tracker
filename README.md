@@ -6,11 +6,12 @@ A web app to manage your fragrance collection and usage.
 
 ## Tech Stack
 
-| Layer        | Technology                          |
-| ------------ | ----------------------------------- |
-| Framework    | [Next.js 16](https://nextjs.org/) (App Router) |
-| Database     | [Convex](https://www.convex.dev/) (real-time backend) |
-| Runtime & Package Manager | [Bun](https://bun.sh/)      |
+| Layer                     | Technology                        |
+| ------------------------- | --------------------------------- |
+| Framework                 | [Next.js](https://nextjs.org/)    |
+| Database                  | [Convex](https://www.convex.dev/) |
+| Runtime & Package Manager | [Bun](https://bun.sh/)            |
+| Auth                      | [Clerk](https://clerk.com/)       |
 
 ---
 
@@ -27,21 +28,21 @@ Make sure you have the following installed before setting up the project:
 
 **1. Clone the repository**
 
-```fragrances-tracker/README.md#L1-1
+```bash
 git clone https://github.com/your-username/fragrances-tracker.git
 cd fragrances-tracker
 ```
 
 **2. Install dependencies**
 
-```fragrances-tracker/README.md#L1-1
+```bash
 cd my-app
 bun install
 ```
 
 **3. Start the development server**
 
-```fragrances-tracker/README.md#L1-1
+```bash
 bun dev
 ```
 
@@ -53,12 +54,12 @@ Open [http://localhost:3000](http://localhost:3000) in your browser to view the 
 
 All scripts should be run from inside the `my-app/` directory.
 
-| Script        | Description                                  |
-| ------------- | -------------------------------------------- |
-| `bun dev`     | Starts the local development server          |
-| `bun build`   | Creates an optimized production build        |
-| `bun start`   | Runs the production build locally            |
-| `bun lint`    | Runs ESLint across the project               |
+| Script        | Description                           |
+| ------------- | ------------------------------------- |
+| `bun dev`     | Starts the local development server   |
+| `bun build`   | Creates an optimized production build |
+| `bun start`   | Runs the production build locally     |
+| `bun lint`    | Runs ESLint across the project        |
 
 ---
 
