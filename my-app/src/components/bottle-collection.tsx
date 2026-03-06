@@ -21,21 +21,12 @@ export function BottleCollection({
   onAddBottle,
 }: BottleCollectionProps) {
   const bottles = useQuery(api.bottles.listBottles);
-  const allLogs = useQuery(api.wearLogs.listWearLogs);
+  const bottleStatsMap = useQuery(api.wearLogs.listBottleStats);
   const [search, setSearch] = useState("");
 
-  // Compute per-bottle stats from logs
-  const bottleStats = useMemo(() => {
-    if (!allLogs) return new Map<string, { wears: number; sprays: number }>();
-    const stats = new Map<string, { wears: number; sprays: number }>();
-    for (const log of allLogs) {
-      const existing = stats.get(log.bottleId) ?? { wears: 0, sprays: 0 };
-      existing.wears += 1;
-      existing.sprays += log.sprays;
-      stats.set(log.bottleId, existing);
-    }
-    return stats;
-  }, [allLogs]);
+  // bottleStatsMap is already aggregated server-side; just look up per bottle.
+  const getStats = (bottleId: string) =>
+    bottleStatsMap ? (bottleStatsMap[bottleId] ?? { wears: 0, sprays: 0 }) : undefined;
 
   const filteredBottles = useMemo(() => {
     if (!bottles) return [];
@@ -139,7 +130,7 @@ export function BottleCollection({
       <div className="flex-1 overflow-y-auto scrollbar-fade pb-5 pt-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {filteredBottles.map((bottle, i) => {
-            const stats = bottleStats.get(bottle._id);
+            const stats = getStats(bottle._id);
             return (
               <BottleCard
                 key={bottle._id}

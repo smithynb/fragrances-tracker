@@ -59,7 +59,7 @@ export function AddWearLogDialog({
   useEffect(() => {
     if (open) {
       const now = new Date();
-      setDate(now.toISOString().split("T")[0]);
+      setDate(now.toLocaleDateString("en-CA"));
       setTime(
         now.toLocaleTimeString("en-US", {
           hour12: false,

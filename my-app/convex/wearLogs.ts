@@ -4,6 +4,27 @@ import { getUserId } from "./helpers";
 
 // ── Queries ──────────────────────────────────────────────────────────────────
 
+export const listBottleStats = query({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await getUserId(ctx);
+    const logs = await ctx.db
+      .query("wearLogs")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .collect();
+    // Aggregate wear count and spray totals per bottle server-side so the
+    // collection view never needs to download the full wear-log history.
+    const stats = new Map<string, { wears: number; sprays: number }>();
+    for (const log of logs) {
+      const existing = stats.get(log.bottleId) ?? { wears: 0, sprays: 0 };
+      existing.wears += 1;
+      existing.sprays += log.sprays;
+      stats.set(log.bottleId, existing);
+    }
+    return Object.fromEntries(stats);
+  },
+});
+
 export const listWearLogs = query({
   args: {},
   handler: async (ctx) => {

@@ -193,6 +193,7 @@ export function AddBottleDialog({
                     <button
                       type="button"
                       onClick={() => handleRemoveTag(tag)}
+                      aria-label={`Remove tag ${tag}`}
                       className="hover:text-danger transition-colors cursor-pointer"
                     >
                       <X className="h-3 w-3" />
