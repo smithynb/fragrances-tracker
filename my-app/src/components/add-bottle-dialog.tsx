@@ -48,6 +48,7 @@ export function AddBottleDialog({
       setBrand(editBottle.brand ?? "");
       setSizeMl(editBottle.sizeMl?.toString() ?? "");
       setTags(editBottle.tags ?? []);
+      setTagInput("");
       setComments(editBottle.comments ?? "");
     } else if (open) {
       setName("");
