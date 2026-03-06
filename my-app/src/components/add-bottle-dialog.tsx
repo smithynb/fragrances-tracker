@@ -15,7 +15,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { useState, useEffect, useId } from "react";
+import { Kbd, KbdGroup } from "@/components/ui/kbd";
+import { useState, useEffect, useId, useRef } from "react";
 import { X } from "lucide-react";
 
 interface AddBottleDialogProps {
@@ -41,6 +42,7 @@ export function AddBottleDialog({
   const [submitting, setSubmitting] = useState(false);
   const titleId = useId();
   const descriptionId = useId();
+  const formRef = useRef<HTMLFormElement>(null);
 
   const isEditing = !!editBottle;
 
@@ -71,10 +73,18 @@ export function AddBottleDialog({
   };
 
   const handleTagKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
+    if (e.key === "Enter" && !e.ctrlKey && !e.metaKey && !e.shiftKey) {
       e.preventDefault();
       handleAddTag();
     }
+  };
+
+  const handleFormKeyDown = (e: React.KeyboardEvent<HTMLFormElement>) => {
+    if (e.key !== "Enter" || !e.ctrlKey || e.shiftKey || e.metaKey) return;
+    if (!name.trim() || submitting) return;
+
+    e.preventDefault();
+    formRef.current?.requestSubmit();
   };
 
   const handleRemoveTag = (tag: string) => {
@@ -129,7 +139,12 @@ export function AddBottleDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-5">
+        <form
+          ref={formRef}
+          onSubmit={handleSubmit}
+          onKeyDown={handleFormKeyDown}
+          className="space-y-5"
+        >
           {/* Name + Brand side by side */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
@@ -230,14 +245,34 @@ export function AddBottleDialog({
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={!name.trim() || submitting}>
-              {submitting
-                ? isEditing
-                  ? "Saving..."
-                  : "Adding..."
-                : isEditing
-                  ? "Save Changes"
-                  : "Add Fragrance"}
+            <Button
+              type="submit"
+              disabled={!name.trim() || submitting}
+              aria-keyshortcuts="Control+Enter"
+            >
+              <span>
+                {submitting
+                  ? isEditing
+                    ? "Saving..."
+                    : "Adding..."
+                  : isEditing
+                    ? "Save Changes"
+                    : "Add Fragrance"}
+              </span>
+              {!submitting && (
+                <KbdGroup
+                  aria-hidden="true"
+                  className="ml-1"
+                >
+                  <Kbd className="border-white/20 bg-white/14 text-white shadow-[inset_0_-1px_0_rgba(255,255,255,0.18)]">
+                    Ctrl
+                  </Kbd>
+                  <span className="text-white/65">+</span>
+                  <Kbd className="border-white/20 bg-white/14 text-white shadow-[inset_0_-1px_0_rgba(255,255,255,0.18)]">
+                    ⏎
+                  </Kbd>
+                </KbdGroup>
+              )}
             </Button>
           </DialogFooter>
         </form>
