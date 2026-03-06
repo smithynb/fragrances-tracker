@@ -12,6 +12,7 @@ const DEV_USER_ID = process.env.CONVEX_DEV_USER_ID ?? "dev";
  *   if (!identity) throw new Error("Unauthenticated");
  *   return identity.subject;
  */
-export async function getUserId(_ctx: QueryCtx | MutationCtx): Promise<string> {
+export async function getUserId(ctx: QueryCtx | MutationCtx): Promise<string> {
+  void ctx;
   return DEV_USER_ID;
 }
