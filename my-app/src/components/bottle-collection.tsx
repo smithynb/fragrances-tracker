@@ -21,10 +21,21 @@ export function BottleCollection({
   onAddBottle,
 }: BottleCollectionProps) {
   const bottles = useQuery(api.bottles.listBottles);
-  const bottleStatsMap = useQuery(api.wearLogs.listBottleStats);
+  const wearLogs = useQuery(api.wearLogs.listWearLogs);
   const [search, setSearch] = useState("");
 
-  // bottleStatsMap is already aggregated server-side; just look up per bottle.
+  const bottleStatsMap = useMemo(() => {
+    if (!wearLogs) return undefined;
+    const stats: Record<string, { wears: number; sprays: number }> = {};
+    for (const log of wearLogs) {
+      const current = stats[log.bottleId] ?? { wears: 0, sprays: 0 };
+      current.wears += 1;
+      current.sprays += log.sprays;
+      stats[log.bottleId] = current;
+    }
+    return stats;
+  }, [wearLogs]);
+
   const getStats = (bottleId: string) =>
     bottleStatsMap ? (bottleStatsMap[bottleId] ?? { wears: 0, sprays: 0 }) : undefined;
 
