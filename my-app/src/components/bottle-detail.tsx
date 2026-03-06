@@ -57,12 +57,13 @@ export function BottleDetail({
 
   const totalSprays = logs?.reduce((sum, l) => sum + l.sprays, 0) ?? 0;
   const totalWears = logs?.length ?? 0;
+  const ratedLogs = logs?.filter((l) => l.rating !== undefined) ?? [];
   const avgRating =
-    logs && logs.length > 0
+    ratedLogs.length > 0
       ? (
-        logs.reduce((sum, l) => sum + (l.rating ?? 0), 0) /
-        logs.filter((l) => l.rating !== undefined).length
-      ).toFixed(1)
+          ratedLogs.reduce((sum, l) => sum + (l.rating as number), 0) /
+          ratedLogs.length
+        ).toFixed(1)
       : null;
 
   const handleDelete = async () => {
