@@ -1,42 +1,235 @@
+@import "tailwindcss";
+
+/* ── Theme tokens ────────────────────────────────────────────────────────── */
+@theme {
+  --font-serif: var(--font-display), "Georgia", serif;
+
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-alt: var(--surface-alt);
+  --color-border: var(--border-clr);
+  --color-border-hover: var(--border-hover);
+  --color-text: var(--text);
+  --color-text-secondary: var(--text-secondary);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-subtle: var(--accent-subtle);
+  --color-danger: var(--danger);
+  --color-danger-hover: var(--danger-hover);
+
+  --color-ring: var(--ring);
+  --color-input: var(--input-clr);
+  --color-input-focus: var(--input-focus);
+  --color-overlay: var(--overlay);
+
+  /* Animation curves */
+  --ease-smooth: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* ── Light theme (milky beige) ───────────────────────────────────────────── */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --bg: #F5F0EA;
+  --surface: #FFFFFF;
+  --surface-alt: #EDE6DD;
+  --border-clr: #E0D8CE;
+  --border-hover: #C9BFAF;
+  --text: #2C2622;
+  --text-secondary: #8A7E73;
+  --accent: #9B8B78;
+  --accent-hover: #7D6E5D;
+  --accent-subtle: #F0EAE2;
+  --danger: #C4564A;
+  --danger-hover: #A84339;
+  --ring: #B8A99A;
+  --input-clr: #F7F3EE;
+  --input-focus: #FFFFFF;
+  --overlay: rgba(44, 38, 34, 0.4);
+
+  color-scheme: light;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* ── Dark theme (grayish dark blue) ──────────────────────────────────────── */
+.dark {
+  --bg: #151823;
+  --surface: #1C2030;
+  --surface-alt: #232840;
+  --border-clr: #2C3150;
+  --border-hover: #3D4368;
+  --text: #E4DFD9;
+  --text-secondary: #848899;
+  --accent: #B8A99A;
+  --accent-hover: #D4C4B2;
+  --accent-subtle: #232840;
+  --danger: #E0685E;
+  --danger-hover: #F07B72;
+  --ring: #6C7093;
+  --input-clr: #1C2030;
+  --input-focus: #232840;
+  --overlay: rgba(12, 14, 22, 0.6);
+
+  color-scheme: dark;
 }
 
-html,
-body {
-  max-width: 100vw;
-  overflow-x: hidden;
+/* ── Base reset ──────────────────────────────────────────────────────────── */
+/* Note: Tailwind v4 preflight already sets box-sizing, margin, and padding.
+   Do NOT add margin:0 / padding:0 here — it would override utility classes. */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
 }
 
-body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+html {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
+body {
+  background-color: var(--bg);
+  color: var(--text);
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  min-height: 100dvh;
+  overflow-x: hidden;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* ── Custom scrollbar ────────────────────────────────────────────────────── */
 * {
-  box-sizing: border-box;
-  padding: 0;
-  margin: 0;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-clr) transparent;
 }
 
-a {
-  color: inherit;
-  text-decoration: none;
+*::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
 }
 
-@media (prefers-color-scheme: dark) {
-  html {
-    color-scheme: dark;
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: var(--border-clr);
+  border-radius: 999px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background-color: var(--accent);
+}
+
+/* Hide scrollbar until hover (desktop) */
+@media (hover: hover) and (pointer: fine) {
+  .scrollbar-fade {
+    scrollbar-color: transparent transparent;
   }
+  .scrollbar-fade::-webkit-scrollbar-thumb {
+    background-color: transparent;
+  }
+  .scrollbar-fade:hover {
+    scrollbar-color: var(--border-clr) transparent;
+  }
+  .scrollbar-fade:hover::-webkit-scrollbar-thumb {
+    background-color: var(--border-clr);
+  }
+}
+
+/* ── Selection ───────────────────────────────────────────────────────────── */
+::selection {
+  background-color: var(--accent);
+  color: white;
+}
+
+.dark ::selection {
+  background-color: var(--accent);
+  color: #151823;
+}
+
+/* ── Focus ring ──────────────────────────────────────────────────────────── */
+:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* ── Page entrance animations ────────────────────────────────────────────── */
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes shimmer {
+  from { opacity: 0.5; }
+  to { opacity: 1; }
+}
+
+.animate-fade-up {
+  animation: fadeUp 0.5s var(--ease-smooth) both;
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.4s var(--ease-smooth) both;
+}
+
+.animate-scale-in {
+  animation: scaleIn 0.35s var(--ease-smooth) both;
+}
+
+.animate-shimmer {
+  animation: shimmer 1.5s ease-in-out infinite alternate;
+}
+
+/* Stagger utilities */
+.stagger-1 { animation-delay: 0.05s; }
+.stagger-2 { animation-delay: 0.1s; }
+.stagger-3 { animation-delay: 0.15s; }
+.stagger-4 { animation-delay: 0.2s; }
+.stagger-5 { animation-delay: 0.25s; }
+.stagger-6 { animation-delay: 0.3s; }
+.stagger-7 { animation-delay: 0.35s; }
+.stagger-8 { animation-delay: 0.4s; }
+
+/* ── Dialog overlay animation ────────────────────────────────────────────── */
+@keyframes overlayShow {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes contentShow {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -48%) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+/* ── Serif display text utility ──────────────────────────────────────────── */
+.font-display {
+  font-family: var(--font-serif), "Georgia", serif;
 }
