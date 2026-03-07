@@ -1,7 +1,9 @@
 "use client";
 
+import { useAuthActions } from "@convex-dev/auth/react";
 import { useState } from "react";
 import { useQuery } from "convex/react";
+import { useRouter } from "next/navigation";
 import { api } from "../../convex/_generated/api";
 import { Id, Doc } from "../../convex/_generated/dataModel";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -9,15 +11,20 @@ import { BottleCollection } from "@/components/bottle-collection";
 import { BottleDetail } from "@/components/bottle-detail";
 import { AddBottleDialog } from "@/components/add-bottle-dialog";
 import { AddWearLogDialog } from "@/components/add-wear-log-dialog";
-import { Wine } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { LoaderCircle, LogOut, Wine } from "lucide-react";
 
 export function HomePage() {
+  const router = useRouter();
+  const { signOut } = useAuthActions();
   const [selectedBottleId, setSelectedBottleId] =
     useState<Id<"bottles"> | null>(null);
   const [addBottleOpen, setAddBottleOpen] = useState(false);
   const [editBottle, setEditBottle] = useState<Doc<"bottles"> | null>(null);
   const [addWearLogOpen, setAddWearLogOpen] = useState(false);
   const [mobileDetailOpen, setMobileDetailOpen] = useState(false);
+  const [isSigningOut, setIsSigningOut] = useState(false);
+  const currentUser = useQuery(api.users.currentUser);
 
   const selectedBottle = useQuery(
     api.bottles.getBottle,
@@ -46,8 +53,49 @@ export function HomePage() {
     if (!open) setEditBottle(null);
   };
 
+  const handleSignOut = async () => {
+    setIsSigningOut(true);
+
+    try {
+      await signOut();
+      router.replace("/signin");
+    } finally {
+      setIsSigningOut(false);
+    }
+  };
+
+  const userLabel =
+    currentUser?.name ?? currentUser?.email ?? "Signed in with Google";
+
   return (
-    <div className="flex flex-col h-dvh bg-bg">
+    <div className="flex h-dvh flex-col bg-bg">
+      <header className="flex shrink-0 items-center justify-between gap-4 border-b border-border/50 bg-bg/90 px-4 py-3 backdrop-blur-sm sm:px-6">
+        <div className="min-w-0">
+          <p className="font-display text-xl font-semibold text-text">
+            Fragrance Tracker
+          </p>
+          <p className="truncate text-sm text-text-secondary">{userLabel}</p>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <ThemeToggle />
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => void handleSignOut()}
+            disabled={isSigningOut}
+            className="gap-2"
+          >
+            {isSigningOut ? (
+              <LoaderCircle className="h-4 w-4 animate-spin" />
+            ) : (
+              <LogOut className="h-4 w-4" />
+            )}
+            Sign out
+          </Button>
+        </div>
+      </header>
+
       <div className="flex flex-1 overflow-hidden">
         <div
           className={`w-full lg:w-[480px] xl:w-[540px] border-r border-border/40 bg-bg flex flex-col shrink-0 px-6 lg:px-7 ${
@@ -88,10 +136,6 @@ export function HomePage() {
             </div>
           )}
         </div>
-      </div>
-
-      <div className="fixed bottom-5 right-5 z-50 animate-fade-in stagger-4">
-        <ThemeToggle />
       </div>
 
       <AddBottleDialog

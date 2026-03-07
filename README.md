@@ -11,7 +11,7 @@ A web app to manage your fragrance collection and usage.
 | Framework                 | [Next.js](https://nextjs.org/)    |
 | Database                  | [Convex](https://www.convex.dev/) |
 | Runtime & Package Manager | [Bun](https://bun.sh/)            |
-| Auth                      | [Clerk](https://clerk.com/)       |
+| Auth                      | [Convex Auth](https://labs.convex.dev/auth) |
 
 ---
 
@@ -46,6 +46,20 @@ bun install
 bun dev
 ```
 
+Before using Google sign-in, configure Convex Auth for your deployment:
+
+- `SITE_URL`
+- `JWT_PRIVATE_KEY`
+- `JWKS`
+- `AUTH_GOOGLE_ID`
+- `AUTH_GOOGLE_SECRET`
+
+Then register your Google OAuth redirect URI as:
+
+```text
+https://<your-convex-deployment>.convex.site/api/auth/callback/google
+```
+
 Open [http://localhost:3000](http://localhost:3000) in your browser to view the app.
 
 ---
@@ -57,9 +71,9 @@ All scripts should be run from inside the `my-app/` directory.
 | Script        | Description                           |
 | ------------- | ------------------------------------- |
 | `bun dev`     | Starts the local development server   |
-| `bun build`   | Creates an optimized production build |
-| `bun start`   | Runs the production build locally     |
-| `bun lint`    | Runs ESLint across the project        |
+| `bun run build` | Creates an optimized production build |
+| `bun run start` | Runs the production build locally     |
+| `bun run lint`  | Runs ESLint across the project        |
 
 ---
 
