@@ -61,9 +61,9 @@ export function BottleDetail({
   const avgRating =
     ratedLogs.length > 0
       ? (
-          ratedLogs.reduce((sum, l) => sum + (l.rating as number), 0) /
-          ratedLogs.length
-        ).toFixed(1)
+        ratedLogs.reduce((sum, l) => sum + (l.rating as number), 0) /
+        ratedLogs.length
+      ).toFixed(1)
       : null;
 
   const handleDelete = async () => {
@@ -105,7 +105,7 @@ export function BottleDetail({
               onClick={handleDelete}
               onMouseLeave={() => setConfirmDelete(false)}
               className={cn(
-                "h-10 transition-all duration-300 ease-out shrink-0 overflow-hidden relative",
+                "h-10 transition-all duration-300 ease-out shrink-0 overflow-hidden relative gap-0",
                 confirmDelete ? "w-[116px] px-4" : "w-10 px-0 justify-center"
               )}
             >
