@@ -8,8 +8,11 @@
  * @module
  */
 
+import type * as auth from "../auth.js";
 import type * as bottles from "../bottles.js";
 import type * as helpers from "../helpers.js";
+import type * as http from "../http.js";
+import type * as users from "../users.js";
 import type * as wearLogs from "../wearLogs.js";
 
 import type {
@@ -19,8 +22,11 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  auth: typeof auth;
   bottles: typeof bottles;
   helpers: typeof helpers;
+  http: typeof http;
+  users: typeof users;
   wearLogs: typeof wearLogs;
 }>;
 

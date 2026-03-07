@@ -1,3 +1,4 @@
+import { ConvexAuthNextjsServerProvider } from "@convex-dev/auth/nextjs/server";
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, Cormorant_Garamond } from "next/font/google";
 import { Providers } from "./providers";
@@ -39,7 +40,9 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} ${cormorant.variable} antialiased`}
       >
-        <Providers>{children}</Providers>
+        <ConvexAuthNextjsServerProvider>
+          <Providers>{children}</Providers>
+        </ConvexAuthNextjsServerProvider>
       </body>
     </html>
   );

@@ -1,9 +1,12 @@
+import { authTables } from "@convex-dev/auth/server";
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
 export default defineSchema({
+  ...authTables,
+
   bottles: defineTable({
-    userId: v.string(),
+    userId: v.id("users"),
     name: v.string(),
 
     brand: v.optional(v.string()),
@@ -17,7 +20,7 @@ export default defineSchema({
   }).index("by_user", ["userId"]),
 
   wearLogs: defineTable({
-    userId: v.string(),
+    userId: v.id("users"),
 
     bottleId: v.id("bottles"),
 
