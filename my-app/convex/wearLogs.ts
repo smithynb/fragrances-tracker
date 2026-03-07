@@ -1,13 +1,17 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
-import { getUserId } from "./helpers";
+import { getOptionalUserId, getUserId } from "./helpers";
 
 // ── Queries ──────────────────────────────────────────────────────────────────
 
 export const listBottleStats = query({
   args: {},
   handler: async (ctx) => {
-    const userId = await getUserId(ctx);
+    const userId = await getOptionalUserId(ctx);
+    if (userId === null) {
+      return {};
+    }
+
     const logs = await ctx.db
       .query("wearLogs")
       .withIndex("by_user", (q) => q.eq("userId", userId))
@@ -28,7 +32,11 @@ export const listBottleStats = query({
 export const listWearLogs = query({
   args: {},
   handler: async (ctx) => {
-    const userId = await getUserId(ctx);
+    const userId = await getOptionalUserId(ctx);
+    if (userId === null) {
+      return [];
+    }
+
     // Uses the by_user index — no full-table scan, no in-memory filter.
     return await ctx.db
       .query("wearLogs")
@@ -41,7 +49,11 @@ export const listWearLogs = query({
 export const listWearLogsByBottle = query({
   args: { bottleId: v.id("bottles") },
   handler: async (ctx, args) => {
-    const userId = await getUserId(ctx);
+    const userId = await getOptionalUserId(ctx);
+    if (userId === null) {
+      return [];
+    }
+
     // Uses the compound by_user_bottle_time index so both the userId and
     // bottleId filters are satisfied in the index (no JS-side filtering),
     // and results arrive ordered by wornAt descending via .order("desc").
@@ -58,7 +70,11 @@ export const listWearLogsByBottle = query({
 export const getWearLog = query({
   args: { wearLogId: v.id("wearLogs") },
   handler: async (ctx, args) => {
-    const userId = await getUserId(ctx);
+    const userId = await getOptionalUserId(ctx);
+    if (userId === null) {
+      return null;
+    }
+
     const log = await ctx.db.get(args.wearLogId);
     if (!log || log.userId !== userId) return null;
     return log;
