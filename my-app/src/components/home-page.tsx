@@ -55,6 +55,11 @@ export function HomePage() {
 
   const handleSignOut = async () => {
     setIsSigningOut(true);
+    setSelectedBottleId(null);
+    setMobileDetailOpen(false);
+    setAddWearLogOpen(false);
+    setAddBottleOpen(false);
+    setEditBottle(null);
 
     try {
       await signOut();

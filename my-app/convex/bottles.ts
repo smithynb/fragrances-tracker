@@ -1,13 +1,17 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
-import { getUserId } from "./helpers";
+import { getOptionalUserId, getUserId } from "./helpers";
 
 // ── Queries ──────────────────────────────────────────────────────────────────
 
 export const listBottles = query({
   args: {},
   handler: async (ctx) => {
-    const userId = await getUserId(ctx);
+    const userId = await getOptionalUserId(ctx);
+    if (userId === null) {
+      return [];
+    }
+
     return await ctx.db
       .query("bottles")
       .withIndex("by_user", (q) => q.eq("userId", userId))
@@ -19,7 +23,11 @@ export const listBottles = query({
 export const getBottle = query({
   args: { bottleId: v.id("bottles") },
   handler: async (ctx, args) => {
-    const userId = await getUserId(ctx);
+    const userId = await getOptionalUserId(ctx);
+    if (userId === null) {
+      return null;
+    }
+
     const bottle = await ctx.db.get(args.bottleId);
     if (!bottle || bottle.userId !== userId) return null;
     return bottle;
