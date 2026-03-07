@@ -22,7 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useState, useEffect, useId } from "react";
+import { useState, useEffect } from "react";
 
 interface AddWearLogDialogProps {
   open: boolean;
@@ -55,8 +55,6 @@ export function AddWearLogDialog({
   const [rating, setRating] = useState("");
   const [comment, setComment] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const titleId = useId();
-  const descriptionId = useId();
 
   useEffect(() => {
     if (open) {
@@ -101,14 +99,10 @@ export function AddWearLogDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
-        className="sm:max-w-md"
-        aria-labelledby={titleId}
-        aria-describedby={descriptionId}
-      >
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle id={titleId}>Log a Wear</DialogTitle>
-          <DialogDescription id={descriptionId}>
+          <DialogTitle>Log a Wear</DialogTitle>
+          <DialogDescription>
             Record when you wore this fragrance.
           </DialogDescription>
         </DialogHeader>

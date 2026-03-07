@@ -16,7 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Kbd, KbdGroup } from "@/components/ui/kbd";
-import { useState, useEffect, useId, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { X } from "lucide-react";
 
 interface AddBottleDialogProps {
@@ -40,8 +40,6 @@ export function AddBottleDialog({
   const [tags, setTags] = useState<string[]>([]);
   const [comments, setComments] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const titleId = useId();
-  const descriptionId = useId();
   const formRef = useRef<HTMLFormElement>(null);
 
   const isEditing = !!editBottle;
@@ -123,16 +121,12 @@ export function AddBottleDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
-        className="sm:max-w-md"
-        aria-labelledby={titleId}
-        aria-describedby={descriptionId}
-      >
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle id={titleId}>
+          <DialogTitle>
             {isEditing ? "Edit Fragrance" : "Add Fragrance"}
           </DialogTitle>
-          <DialogDescription id={descriptionId}>
+          <DialogDescription>
             {isEditing
               ? "Update the details of your fragrance."
               : "Add a new fragrance to your collection."}
