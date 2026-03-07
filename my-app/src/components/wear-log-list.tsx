@@ -136,7 +136,7 @@ export function WearLogList({ logs }: WearLogListProps) {
                   onClick={() => handleDelete(log._id)}
                   onMouseLeave={() => setDeletingId(null)}
                   className={cn(
-                    "h-8 transition-all duration-300 ease-out opacity-0 group-hover:opacity-100 shrink-0 overflow-hidden relative",
+                    "h-8 transition-all duration-300 ease-out opacity-0 group-hover:opacity-100 shrink-0 overflow-hidden relative gap-0",
                     deletingId === log._id ? "w-[100px] px-3" : "w-8 px-0 justify-center"
                   )}
                 >
