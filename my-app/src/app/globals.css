@@ -60,7 +60,7 @@
   --text-secondary: #848899;
   --accent: #B8A99A;
   --accent-hover: #D4C4B2;
-  --accent-subtle: #232840;
+  --accent-subtle: #2A3058;
   --danger: #E0685E;
   --danger-hover: #F07B72;
   --ring: #6C7093;
@@ -124,12 +124,15 @@ body {
   .scrollbar-fade {
     scrollbar-color: transparent transparent;
   }
+
   .scrollbar-fade::-webkit-scrollbar-thumb {
     background-color: transparent;
   }
+
   .scrollbar-fade:hover {
     scrollbar-color: var(--border-clr) transparent;
   }
+
   .scrollbar-fade:hover::-webkit-scrollbar-thumb {
     background-color: var(--border-clr);
   }
@@ -147,10 +150,12 @@ body {
 }
 
 /* ── Focus ring ──────────────────────────────────────────────────────────── */
-:focus-visible {
-  outline: 2px solid var(--ring);
-  outline-offset: 2px;
-  border-radius: 4px;
+@layer base {
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
 }
 
 /* ── Page entrance animations ────────────────────────────────────────────── */
@@ -159,6 +164,7 @@ body {
     opacity: 0;
     transform: translateY(12px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -166,8 +172,13 @@ body {
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes scaleIn {
@@ -175,6 +186,7 @@ body {
     opacity: 0;
     transform: scale(0.97);
   }
+
   to {
     opacity: 1;
     transform: scale(1);
@@ -182,8 +194,13 @@ body {
 }
 
 @keyframes shimmer {
-  from { opacity: 0.5; }
-  to { opacity: 1; }
+  from {
+    opacity: 0.5;
+  }
+
+  to {
+    opacity: 1;
+  }
 }
 
 .animate-fade-up {
@@ -203,19 +220,47 @@ body {
 }
 
 /* Stagger utilities */
-.stagger-1 { animation-delay: 0.05s; }
-.stagger-2 { animation-delay: 0.1s; }
-.stagger-3 { animation-delay: 0.15s; }
-.stagger-4 { animation-delay: 0.2s; }
-.stagger-5 { animation-delay: 0.25s; }
-.stagger-6 { animation-delay: 0.3s; }
-.stagger-7 { animation-delay: 0.35s; }
-.stagger-8 { animation-delay: 0.4s; }
+.stagger-1 {
+  animation-delay: 0.05s;
+}
+
+.stagger-2 {
+  animation-delay: 0.1s;
+}
+
+.stagger-3 {
+  animation-delay: 0.15s;
+}
+
+.stagger-4 {
+  animation-delay: 0.2s;
+}
+
+.stagger-5 {
+  animation-delay: 0.25s;
+}
+
+.stagger-6 {
+  animation-delay: 0.3s;
+}
+
+.stagger-7 {
+  animation-delay: 0.35s;
+}
+
+.stagger-8 {
+  animation-delay: 0.4s;
+}
 
 /* ── Dialog overlay animation ────────────────────────────────────────────── */
 @keyframes overlayShow {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes contentShow {
@@ -223,6 +268,7 @@ body {
     opacity: 0;
     transform: translate(-50%, -48%) scale(0.96);
   }
+
   to {
     opacity: 1;
     transform: translate(-50%, -50%) scale(1);

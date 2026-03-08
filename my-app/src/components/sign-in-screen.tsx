@@ -30,13 +30,19 @@ export function SignInScreen() {
 
   return (
     <main className="relative min-h-dvh overflow-hidden bg-[radial-gradient(ellipse_at_top,_var(--color-accent-subtle),_var(--color-bg)_70%)]">
+      {/* Ambient background blurs */}
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div className="absolute -right-24 top-[20%] h-72 w-72 rounded-full bg-accent/[0.04] blur-3xl dark:bg-accent/[0.08]" />
+        <div className="absolute -left-16 bottom-[28%] h-56 w-56 rounded-full bg-accent/[0.03] blur-3xl dark:bg-accent/[0.06]" />
+      </div>
+
       <div className="absolute right-5 top-5 z-10">
         <ThemeToggle />
       </div>
 
       <div className="flex min-h-dvh items-center justify-center px-5">
-        <div className="w-full max-w-[340px] animate-scale-in">
-          <div className="rounded-2xl border border-border/40 bg-surface/80 p-8 shadow-[0_8px_40px_rgba(0,0,0,0.06)] backdrop-blur-sm">
+        <div className="w-full max-w-[360px] animate-scale-in">
+          <div className="rounded-2xl border border-border/40 bg-surface/80 p-8 shadow-[0_8px_40px_rgba(0,0,0,0.06)] backdrop-blur-sm dark:border-border/60 dark:bg-surface/90 dark:shadow-[0_8px_40px_rgba(0,0,0,0.3)]">
             <div className="flex flex-col items-center text-center">
               <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-accent/12 text-accent">
                 <Wine className="h-6 w-6" />
@@ -44,9 +50,18 @@ export function SignInScreen() {
               <span className="mt-3 font-display text-xl tracking-tight text-text">
                 Fragrance Tracker
               </span>
+              <p className="mt-1.5 font-display text-[13px] italic tracking-wide text-text-secondary/70">
+                Your personal scent journal
+              </p>
             </div>
 
-            <div className="my-7 h-px bg-border/50" />
+            <div className="my-6 h-px bg-border/50" />
+
+            <p className="mb-5 text-center text-[13px] leading-relaxed text-text-secondary">
+              Build your collection, note what moves you,
+              <br className="hidden min-[340px]:block" />
+              and never forget a scent worth remembering.
+            </p>
 
             <Button
               onClick={() => void handleGoogleSignIn()}
