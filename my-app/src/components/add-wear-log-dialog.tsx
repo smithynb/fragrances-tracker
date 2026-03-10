@@ -178,12 +178,12 @@ export function AddWearLogDialog({
 
           {/* Comment */}
           <div className="space-y-2">
-            <Label htmlFor="comment">Notes</Label>
+            <Label htmlFor="comment">Comments</Label>
             <Textarea
               id="comment"
               value={comment}
               onChange={(e) => setComment(e.target.value)}
-              placeholder="Performance notes, compliments received..."
+              placeholder="Performance comments, compliments received..."
               rows={2}
             />
           </div>
