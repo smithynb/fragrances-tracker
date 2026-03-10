@@ -221,7 +221,7 @@ export function AddBottleDialog({
 
           {/* Comments */}
           <div className="space-y-2">
-            <Label htmlFor="comments">Notes</Label>
+            <Label htmlFor="comments">Comments</Label>
             <Textarea
               id="comments"
               value={comments}

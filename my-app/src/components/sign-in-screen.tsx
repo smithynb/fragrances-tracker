@@ -58,7 +58,7 @@ export function SignInScreen() {
             <div className="my-6 h-px bg-border/50" />
 
             <p className="mb-5 text-center text-[13px] leading-relaxed text-text-secondary">
-              Build your collection, note what moves you,
+              Build your collection, capture what moves you,
               <br className="hidden min-[340px]:block" />
               and never forget a scent worth remembering.
             </p>
