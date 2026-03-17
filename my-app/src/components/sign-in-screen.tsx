@@ -20,7 +20,9 @@ export function SignInScreen() {
     } catch (error) {
       // Show a generic message instead of the raw error to avoid leaking
       // internal details (stack traces, library internals) to the user.
-      console.error("Google sign-in failed:", error);
+      if (process.env.NODE_ENV !== "production") {
+        console.error("Google sign-in failed:", error);
+      }
       setErrorMessage("Unable to start Google sign-in. Please try again.");
     } finally {
       setIsSigningIn(false);
