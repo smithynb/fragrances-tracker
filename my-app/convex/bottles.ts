@@ -1,6 +1,55 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { getOptionalUserId, getUserId } from "./helpers";
+import { rateLimiter } from "./rateLimits";
+
+// ── Validation helpers ────────────────────────────────────────────────────────
+// HTML min/max attributes are client-side only and trivially bypassed, so we
+// enforce semantic bounds on the server where they cannot be skipped.
+
+const MAX_NAME_LENGTH = 200;
+const MAX_BRAND_LENGTH = 200;
+const MAX_COMMENTS_LENGTH = 2000;
+const MAX_TAG_LENGTH = 50;
+const MAX_TAGS_COUNT = 20;
+const MAX_SIZE_ML = 10_000; // 10 litres ought to be enough for anybody
+
+function assertValidBottleInput(args: {
+  name?: string;
+  brand?: string | null;
+  comments?: string | null;
+  tags?: string[] | null;
+  sizeMl?: number | null;
+}) {
+  if (args.name !== undefined && args.name.length > MAX_NAME_LENGTH) {
+    throw new Error(`Name must be at most ${MAX_NAME_LENGTH} characters.`);
+  }
+  if (args.brand && args.brand.length > MAX_BRAND_LENGTH) {
+    throw new Error(`Brand must be at most ${MAX_BRAND_LENGTH} characters.`);
+  }
+  if (args.comments && args.comments.length > MAX_COMMENTS_LENGTH) {
+    throw new Error(
+      `Comments must be at most ${MAX_COMMENTS_LENGTH} characters.`,
+    );
+  }
+  if (args.tags) {
+    if (args.tags.length > MAX_TAGS_COUNT) {
+      throw new Error(`You can add at most ${MAX_TAGS_COUNT} tags.`);
+    }
+    if (args.tags.some((t) => t.length > MAX_TAG_LENGTH)) {
+      throw new Error(
+        `Each tag must be at most ${MAX_TAG_LENGTH} characters.`,
+      );
+    }
+  }
+  if (
+    args.sizeMl !== undefined &&
+    args.sizeMl !== null &&
+    args.sizeMl > MAX_SIZE_ML
+  ) {
+    throw new Error(`Size must be at most ${MAX_SIZE_ML} mL.`);
+  }
+}
 
 // ── Queries ──────────────────────────────────────────────────────────────────
 
@@ -48,8 +97,10 @@ export const addBottle = mutation({
     if (args.sizeMl !== undefined && args.sizeMl <= 0) {
       throw new Error("sizeMl must be greater than 0.");
     }
+    assertValidBottleInput(args);
 
     const userId = await getUserId(ctx);
+    await rateLimiter.limit(ctx, "addBottle", { key: userId, throws: true });
     return await ctx.db.insert("bottles", {
       userId,
       name: args.name,
@@ -75,6 +126,7 @@ export const updateBottle = mutation({
   },
   handler: async (ctx, args) => {
     const userId = await getUserId(ctx);
+    await rateLimiter.limit(ctx, "updateBottle", { key: userId, throws: true });
     const bottle = await ctx.db.get(args.bottleId);
     if (!bottle || bottle.userId !== userId) {
       throw new Error("Bottle not found or access denied.");
@@ -84,6 +136,7 @@ export const updateBottle = mutation({
     if (args.sizeMl !== undefined && args.sizeMl !== null && args.sizeMl <= 0) {
       throw new Error("sizeMl must be greater than 0.");
     }
+    assertValidBottleInput(args);
 
     // Build the patch explicitly so that:
     //   undefined  → field is omitted (no change)
@@ -113,6 +166,7 @@ export const deleteBottle = mutation({
   args: { bottleId: v.id("bottles") },
   handler: async (ctx, args) => {
     const userId = await getUserId(ctx);
+    await rateLimiter.limit(ctx, "deleteBottle", { key: userId, throws: true });
     const bottle = await ctx.db.get(args.bottleId);
     if (!bottle || bottle.userId !== userId) {
       throw new Error("Bottle not found or access denied.");

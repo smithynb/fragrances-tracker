@@ -18,11 +18,10 @@ export function SignInScreen() {
     try {
       await signIn("google", { redirectTo: "/" });
     } catch (error) {
-      setErrorMessage(
-        error instanceof Error
-          ? error.message
-          : "Unable to start Google sign-in.",
-      );
+      // Show a generic message instead of the raw error to avoid leaking
+      // internal details (stack traces, library internals) to the user.
+      console.error("Google sign-in failed:", error);
+      setErrorMessage("Unable to start Google sign-in. Please try again.");
     } finally {
       setIsSigningIn(false);
     }

@@ -1,6 +1,13 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { getOptionalUserId, getUserId } from "./helpers";
+import { rateLimiter } from "./rateLimits";
+
+// ── Validation constants ──────────────────────────────────────────────────────
+
+const MAX_COMMENT_LENGTH = 2000;
+const MAX_CONTEXT_LENGTH = 200;
+const MAX_SPRAYS = 100;
 
 // ── Queries ──────────────────────────────────────────────────────────────────
 
@@ -93,6 +100,9 @@ function assertValidSprays(sprays: number): void {
   if (!Number.isInteger(sprays) || sprays < 1) {
     throw new Error("sprays must be a whole number of at least 1.");
   }
+  if (sprays > MAX_SPRAYS) {
+    throw new Error(`sprays must be at most ${MAX_SPRAYS}.`);
+  }
 }
 
 function assertValidRating(rating: number): void {
@@ -118,11 +128,24 @@ export const addWearLog = mutation({
     if (args.rating !== undefined) assertValidRating(args.rating);
 
     const userId = await getUserId(ctx);
+    await rateLimiter.limit(ctx, "addWearLog", { key: userId, throws: true });
 
     // Verify the bottle belongs to this user.
     const bottle = await ctx.db.get(args.bottleId);
     if (!bottle || bottle.userId !== userId) {
       throw new Error("Bottle not found or access denied.");
+    }
+
+    // Validate string lengths server-side (HTML max is client-only).
+    if (args.comment && args.comment.length > MAX_COMMENT_LENGTH) {
+      throw new Error(
+        `Comment must be at most ${MAX_COMMENT_LENGTH} characters.`,
+      );
+    }
+    if (args.context && args.context.length > MAX_CONTEXT_LENGTH) {
+      throw new Error(
+        `Context must be at most ${MAX_CONTEXT_LENGTH} characters.`,
+      );
     }
 
     return await ctx.db.insert("wearLogs", {
@@ -157,9 +180,22 @@ export const updateWearLog = mutation({
       assertValidRating(args.rating);
 
     const userId = await getUserId(ctx);
+    await rateLimiter.limit(ctx, "updateWearLog", { key: userId, throws: true });
     const log = await ctx.db.get(args.wearLogId);
     if (!log || log.userId !== userId) {
       throw new Error("Wear log not found or access denied.");
+    }
+
+    // Validate string lengths server-side.
+    if (args.comment !== undefined && args.comment !== null && args.comment.length > MAX_COMMENT_LENGTH) {
+      throw new Error(
+        `Comment must be at most ${MAX_COMMENT_LENGTH} characters.`,
+      );
+    }
+    if (args.context !== undefined && args.context !== null && args.context.length > MAX_CONTEXT_LENGTH) {
+      throw new Error(
+        `Context must be at most ${MAX_CONTEXT_LENGTH} characters.`,
+      );
     }
 
     // Build the patch explicitly so that:
@@ -188,6 +224,7 @@ export const deleteWearLog = mutation({
   args: { wearLogId: v.id("wearLogs") },
   handler: async (ctx, args) => {
     const userId = await getUserId(ctx);
+    await rateLimiter.limit(ctx, "deleteWearLog", { key: userId, throws: true });
     const log = await ctx.db.get(args.wearLogId);
     if (!log || log.userId !== userId) {
       throw new Error("Wear log not found or access denied.");
