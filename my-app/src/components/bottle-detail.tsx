@@ -97,7 +97,7 @@ export function BottleDetail({
             )}
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            <Button variant="ghost" size="icon" onClick={onEdit}>
+            <Button variant="ghost" size="icon" onClick={onEdit} className="border border-white/15 bg-white/8 hover:bg-white/15 transition-colors">
               <Pencil className="h-4 w-4" />
             </Button>
             <Button
@@ -105,8 +105,10 @@ export function BottleDetail({
               onClick={handleDelete}
               onMouseLeave={() => setConfirmDelete(false)}
               className={cn(
-                "h-10 transition-all duration-300 ease-out shrink-0 overflow-hidden relative gap-0",
-                confirmDelete ? "w-[116px] px-4" : "w-10 px-0 justify-center"
+                "h-10 transition-all duration-300 ease-out shrink-0 overflow-hidden relative gap-0 border",
+                confirmDelete
+                  ? "w-[116px] px-4 border-transparent"
+                  : "w-10 px-0 justify-center border-red-500/25 bg-red-500/10 text-red-400 hover:bg-red-500/20"
               )}
             >
               <Trash2 className="h-4 w-4 shrink-0 z-10" />
@@ -177,7 +179,7 @@ export function BottleDetail({
         <h3 className="font-display text-lg font-semibold text-text">
           Wear History
         </h3>
-        <Button onClick={onAddWearLog} size="sm" variant="outline" className="gap-1.5">
+        <Button onClick={onAddWearLog} size="sm" variant="outline" className="gap-1.5 bg-white/10 hover:bg-white/20 transition-colors">
           <Plus className="h-3.5 w-3.5" />
           Log Wear
         </Button>

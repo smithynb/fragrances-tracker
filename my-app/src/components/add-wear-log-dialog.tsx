@@ -22,7 +22,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useState, useEffect } from "react";
+import { Kbd, KbdGroup } from "@/components/ui/kbd";
+import { useState, useEffect, useRef } from "react";
 
 interface AddWearLogDialogProps {
   open: boolean;
@@ -55,6 +56,15 @@ export function AddWearLogDialog({
   const [rating, setRating] = useState("");
   const [comment, setComment] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const formRef = useRef<HTMLFormElement>(null);
+
+  const handleFormKeyDown = (e: React.KeyboardEvent<HTMLFormElement>) => {
+    if (e.key !== "Enter" || !e.ctrlKey || e.shiftKey || e.metaKey) return;
+    if (!date || !sprays || submitting) return;
+
+    e.preventDefault();
+    formRef.current?.requestSubmit();
+  };
 
   useEffect(() => {
     if (open) {
@@ -107,7 +117,7 @@ export function AddWearLogDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-5">
+        <form ref={formRef} onSubmit={handleSubmit} onKeyDown={handleFormKeyDown} className="space-y-5">
           {/* Date + Time side by side */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
@@ -196,8 +206,19 @@ export function AddWearLogDialog({
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={!date || !sprays || submitting}>
-              {submitting ? "Logging..." : "Log Wear"}
+            <Button type="submit" disabled={!date || !sprays || submitting} aria-keyshortcuts="Control+Enter">
+              <span>{submitting ? "Logging..." : "Log Wear"}</span>
+              {!submitting && (
+                <KbdGroup aria-hidden="true" className="ml-1">
+                  <Kbd className="border-white/20 bg-white/14 text-white shadow-[inset_0_-1px_0_rgba(255,255,255,0.18)]">
+                    Ctrl
+                  </Kbd>
+                  <span className="text-white/65">+</span>
+                  <Kbd className="border-white/20 bg-white/14 text-white shadow-[inset_0_-1px_0_rgba(255,255,255,0.18)]">
+                    ⏎
+                  </Kbd>
+                </KbdGroup>
+              )}
             </Button>
           </DialogFooter>
         </form>
