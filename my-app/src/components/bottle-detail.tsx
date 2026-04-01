@@ -97,13 +97,21 @@ export function BottleDetail({
             )}
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            <Button variant="ghost" size="icon" onClick={onEdit} className="border border-white/15 bg-white/8 hover:bg-white/15 transition-colors">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onEdit}
+              className="border border-white/15 bg-white/8 hover:bg-white/15 transition-colors"
+              aria-label={`Edit ${bottle.name}`}
+              title={`Edit ${bottle.name}`}
+            >
               <Pencil className="h-4 w-4" />
             </Button>
             <Button
               variant={confirmDelete ? "destructive" : "ghost"}
               onClick={handleDelete}
               onMouseLeave={() => setConfirmDelete(false)}
+              aria-label={confirmDelete ? "Confirm delete" : `Delete ${bottle.name}`}
               className={cn(
                 "h-10 transition-all duration-300 ease-out shrink-0 overflow-hidden relative gap-0 border",
                 confirmDelete
@@ -113,6 +121,7 @@ export function BottleDetail({
             >
               <Trash2 className="h-4 w-4 shrink-0 z-10" />
               <span
+                aria-hidden="true"
                 className={cn(
                   "overflow-hidden transition-all duration-300 ease-out whitespace-nowrap text-sm flex items-center z-10",
                   confirmDelete ? "w-[60px] ml-1.5 opacity-100" : "w-0 ml-0 opacity-0"
