@@ -28,6 +28,9 @@ export const metadata: Metadata = {
     template: "%s | Fragrance Tracker",
   },
   description: "Track your fragrance collection and wear history",
+  icons: {
+    icon: "/favicon.svg",
+  },
 };
 
 export default function RootLayout({
