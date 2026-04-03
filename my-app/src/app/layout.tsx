@@ -25,7 +25,7 @@ const cormorant = Cormorant_Garamond({
 export const metadata: Metadata = {
   title: {
     default: "Fragrance Tracker",
-    template: "%s | Fragrance Tracker",
+    template: "%s · Fragrance Tracker",
   },
   description: "Track your fragrance collection and wear history",
   icons: {

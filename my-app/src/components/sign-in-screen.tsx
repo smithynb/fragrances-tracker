@@ -1,10 +1,11 @@
 "use client";
 
+import Image from "next/image";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { useState } from "react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
-import { LoaderCircle, Wine } from "lucide-react";
+import { LoaderCircle } from "lucide-react";
 
 export function SignInScreen() {
   const { signIn } = useAuthActions();
@@ -45,23 +46,28 @@ export function SignInScreen() {
         <div className="w-full max-w-[360px] animate-scale-in">
           <div className="rounded-2xl border border-border/40 bg-surface/80 p-8 shadow-[0_8px_40px_rgba(0,0,0,0.06)] backdrop-blur-sm dark:border-border/60 dark:bg-surface/90 dark:shadow-[0_8px_40px_rgba(0,0,0,0.3)]">
             <div className="flex flex-col items-center text-center">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-accent/12 text-accent">
-                <Wine className="h-6 w-6" />
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-accent/12">
+                <Image
+                  src="/logo-mark.svg"
+                  alt="Fragrance Tracker logo"
+                  width={28}
+                  height={28}
+                  className="h-7 w-7"
+                  priority
+                />
               </div>
               <span className="mt-3 font-display text-xl tracking-tight text-text">
                 Fragrance Tracker
               </span>
               <p className="mt-1.5 font-display text-[13px] italic tracking-wide text-text-secondary/70">
-                Your personal scent journal
+                Remember what you wear
               </p>
             </div>
 
             <div className="my-6 h-px bg-border/50" />
 
             <p className="mb-5 text-center text-[13px] leading-relaxed text-text-secondary">
-              Build your collection, capture what moves you,
-              <br className="hidden min-[340px]:block" />
-              and never forget a scent worth remembering.
+              Keep your collection, wear history, and notes in one place.
             </p>
 
             <Button
@@ -100,10 +106,6 @@ export function SignInScreen() {
               </p>
             ) : null}
           </div>
-
-          <p className="mt-4 text-center text-xs text-text-secondary/60">
-            You&rsquo;ll be redirected to Google to sign in.
-          </p>
         </div>
       </div>
     </main>
