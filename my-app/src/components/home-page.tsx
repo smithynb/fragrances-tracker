@@ -103,7 +103,7 @@ export function HomePage() {
 
       <div className="flex flex-1 overflow-hidden">
         <div
-          className={`w-full lg:w-[480px] xl:w-[540px] border-r border-border/40 bg-bg flex flex-col shrink-0 px-6 lg:px-7 ${
+          className={`w-full lg:w-[480px] xl:w-[540px] border-r border-border/40 bg-bg flex flex-col shrink-0 overflow-hidden min-h-0 px-6 lg:px-7 ${
             mobileDetailOpen ? "hidden lg:flex" : "flex"
           }`}
         >
