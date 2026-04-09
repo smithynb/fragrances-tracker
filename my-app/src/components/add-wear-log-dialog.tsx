@@ -87,11 +87,21 @@ export function AddWearLogDialog({
   };
 
   const handleFormKeyDown = (e: React.KeyboardEvent<HTMLFormElement>) => {
-    if (e.key !== "Enter" || !e.ctrlKey || e.shiftKey || e.metaKey) return;
-    if (submitting) return;
+    if (e.key !== "Enter") return;
 
+    // Allow plain Enter in textareas (for newlines)
+    if ((e.target as HTMLElement).tagName === "TEXTAREA" && !e.ctrlKey) return;
+
+    // Ctrl+Enter: submit the form
+    if (e.ctrlKey && !e.shiftKey && !e.metaKey) {
+      if (submitting) return;
+      e.preventDefault();
+      formRef.current?.requestSubmit();
+      return;
+    }
+
+    // Block plain Enter from submitting the form on non-textarea fields
     e.preventDefault();
-    formRef.current?.requestSubmit();
   };
 
   useEffect(() => {
