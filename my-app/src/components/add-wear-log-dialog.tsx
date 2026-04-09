@@ -25,6 +25,7 @@ import {
 import { Kbd, KbdGroup } from "@/components/ui/kbd";
 import { useState, useEffect, useRef } from "react";
 import { toast } from "sonner";
+import { getApiErrorMessage } from "@/lib/utils";
 
 interface AddWearLogDialogProps {
   open: boolean;
@@ -58,6 +59,7 @@ export function AddWearLogDialog({
   const [comment, setComment] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [formError, setFormError] = useState<string | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
 
   const clearError = (field: string) => {
@@ -100,8 +102,12 @@ export function AddWearLogDialog({
       return;
     }
 
-    // Block plain Enter from submitting the form on non-textarea fields
-    e.preventDefault();
+    // Block plain Enter from submitting the form only on text/number inputs.
+    // Buttons, Select triggers, and other interactive controls are left
+    // unaffected so keyboard users can activate them normally.
+    if ((e.target as HTMLElement).tagName === "INPUT") {
+      e.preventDefault();
+    }
   };
 
   useEffect(() => {
@@ -120,6 +126,7 @@ export function AddWearLogDialog({
       setRating("");
       setComment("");
       setErrors({});
+      setFormError(null);
     }
   }, [open]);
 
@@ -143,9 +150,12 @@ export function AddWearLogDialog({
       toast.success("Wear logged");
       onOpenChange(false);
     } catch (err) {
-      toast.error(
-        err instanceof Error ? err.message : "Something went wrong"
-      );
+      if (process.env.NODE_ENV !== "production") {
+        console.error("Failed to log wear:", err);
+      }
+      const message = getApiErrorMessage(err);
+      toast.error(message);
+      setFormError(message);
     } finally {
       setSubmitting(false);
     }
@@ -161,7 +171,7 @@ export function AddWearLogDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <form ref={formRef} onSubmit={handleSubmit} onKeyDown={handleFormKeyDown} className="space-y-5">
+        <form ref={formRef} onSubmit={handleSubmit} onKeyDown={handleFormKeyDown} noValidate className="space-y-5">
           {/* Date + Time side by side */}
           <div className="grid grid-cols-2 gap-4">
             <div className="relative space-y-2">
@@ -300,6 +310,11 @@ export function AddWearLogDialog({
           </div>
 
           <DialogFooter>
+            {formError && (
+              <p role="alert" className="w-full rounded-lg border border-danger/30 bg-danger/5 px-3 py-2.5 text-sm text-danger">
+                {formError}
+              </p>
+            )}
             <Button
               type="button"
               variant="outline"

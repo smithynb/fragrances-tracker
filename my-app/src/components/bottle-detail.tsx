@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { getApiErrorMessage } from "@/lib/utils";
 
 interface BottleDetailProps {
   bottleId: Id<"bottles">;
@@ -77,10 +78,11 @@ export function BottleDetail({
       toast.success("Fragrance deleted");
       onClose();
     } catch (err) {
-      toast.error(
-        err instanceof Error ? err.message : "Failed to delete fragrance"
-      );
-      setConfirmDelete(false);
+      if (process.env.NODE_ENV !== "production") {
+        console.error("Failed to delete bottle:", err);
+      }
+      toast.error(getApiErrorMessage(err));
+      // Keep confirmDelete true so the user can retry without an extra click
     }
   };
 

@@ -19,6 +19,7 @@ import { Kbd, KbdGroup } from "@/components/ui/kbd";
 import { useState, useEffect, useRef } from "react";
 import { X } from "lucide-react";
 import { toast } from "sonner";
+import { getApiErrorMessage } from "@/lib/utils";
 
 interface AddBottleDialogProps {
   open: boolean;
@@ -42,6 +43,7 @@ export function AddBottleDialog({
   const [comments, setComments] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [formError, setFormError] = useState<string | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
 
   const isEditing = !!editBottle;
@@ -55,6 +57,7 @@ export function AddBottleDialog({
       setTagInput("");
       setComments(editBottle.comments ?? "");
       setErrors({});
+      setFormError(null);
     } else if (open) {
       setName("");
       setBrand("");
@@ -63,6 +66,7 @@ export function AddBottleDialog({
       setTagInput("");
       setComments("");
       setErrors({});
+      setFormError(null);
     }
   }, [open, editBottle]);
 
@@ -112,8 +116,12 @@ export function AddBottleDialog({
       return;
     }
 
-    // Block plain Enter from submitting the form on non-textarea fields
-    e.preventDefault();
+    // Block plain Enter from submitting the form only on text/number inputs.
+    // Buttons, Select triggers, and other interactive controls are left
+    // unaffected so keyboard users can activate them normally.
+    if ((e.target as HTMLElement).tagName === "INPUT") {
+      e.preventDefault();
+    }
   };
 
   const handleRemoveTag = (tag: string) => {
@@ -148,9 +156,12 @@ export function AddBottleDialog({
       }
       onOpenChange(false);
     } catch (err) {
-      toast.error(
-        err instanceof Error ? err.message : "Something went wrong"
-      );
+      if (process.env.NODE_ENV !== "production") {
+        console.error("Failed to save bottle:", err);
+      }
+      const message = getApiErrorMessage(err);
+      toast.error(message);
+      setFormError(message);
     } finally {
       setSubmitting(false);
     }
@@ -305,6 +316,11 @@ export function AddBottleDialog({
           </div>
 
           <DialogFooter>
+            {formError && (
+              <p role="alert" className="w-full rounded-lg border border-danger/30 bg-danger/5 px-3 py-2.5 text-sm text-danger">
+                {formError}
+              </p>
+            )}
             <Button
               type="button"
               variant="outline"
