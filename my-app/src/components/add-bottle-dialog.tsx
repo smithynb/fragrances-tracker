@@ -18,6 +18,7 @@ import { Label } from "@/components/ui/label";
 import { Kbd, KbdGroup } from "@/components/ui/kbd";
 import { useState, useEffect, useRef } from "react";
 import { X } from "lucide-react";
+import { toast } from "sonner";
 
 interface AddBottleDialogProps {
   open: boolean;
@@ -40,6 +41,7 @@ export function AddBottleDialog({
   const [tags, setTags] = useState<string[]>([]);
   const [comments, setComments] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const formRef = useRef<HTMLFormElement>(null);
 
   const isEditing = !!editBottle;
@@ -52,6 +54,7 @@ export function AddBottleDialog({
       setTags(editBottle.tags ?? []);
       setTagInput("");
       setComments(editBottle.comments ?? "");
+      setErrors({});
     } else if (open) {
       setName("");
       setBrand("");
@@ -59,8 +62,26 @@ export function AddBottleDialog({
       setTags([]);
       setTagInput("");
       setComments("");
+      setErrors({});
     }
   }, [open, editBottle]);
+
+  const clearError = (field: string) => {
+    setErrors((prev) => {
+      if (!prev[field]) return prev;
+      const next = { ...prev };
+      delete next[field];
+      return next;
+    });
+  };
+
+  const validate = (): boolean => {
+    const newErrors: Record<string, string> = {};
+    if (!name.trim()) newErrors.name = "Name is required";
+    if (sizeMl && Number(sizeMl) <= 0) newErrors.sizeMl = "Must be greater than 0";
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
 
   const handleAddTag = () => {
     const trimmed = tagInput.trim();
@@ -79,7 +100,7 @@ export function AddBottleDialog({
 
   const handleFormKeyDown = (e: React.KeyboardEvent<HTMLFormElement>) => {
     if (e.key !== "Enter" || !e.ctrlKey || e.shiftKey || e.metaKey) return;
-    if (!name.trim() || submitting) return;
+    if (submitting) return;
 
     e.preventDefault();
     formRef.current?.requestSubmit();
@@ -91,7 +112,7 @@ export function AddBottleDialog({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim()) return;
+    if (!validate()) return;
 
     setSubmitting(true);
     try {
@@ -104,6 +125,7 @@ export function AddBottleDialog({
           tags: tags.length > 0 ? tags : null,
           comments: comments.trim() || null,
         });
+        toast.success("Fragrance updated");
       } else {
         await addBottle({
           name: name.trim(),
@@ -112,8 +134,13 @@ export function AddBottleDialog({
           tags: tags.length > 0 ? tags : undefined,
           comments: comments.trim() || undefined,
         });
+        toast.success("Fragrance added");
       }
       onOpenChange(false);
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Something went wrong"
+      );
     } finally {
       setSubmitting(false);
     }
@@ -141,15 +168,33 @@ export function AddBottleDialog({
         >
           {/* Name + Brand side by side */}
           <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="name">Name *</Label>
+            <div className="relative space-y-2">
+              <Label htmlFor="name" className={errors.name ? "text-danger" : ""}>
+                Name *
+              </Label>
               <Input
                 id="name"
                 value={name}
-                onChange={(e) => setName(e.target.value)}
+                onChange={(e) => {
+                  setName(e.target.value);
+                  clearError("name");
+                }}
                 placeholder="Aventus"
-                required
+                className={
+                  errors.name
+                    ? "border-danger focus:border-danger focus:ring-danger"
+                    : ""
+                }
+                aria-invalid={!!errors.name}
+                aria-describedby="name-error"
               />
+              <p
+                id="name-error"
+                role="alert"
+                className={`absolute -bottom-3 left-0 text-xs text-danger transition-opacity ${errors.name ? "opacity-100" : "opacity-0 pointer-events-none"}`}
+              >
+                {errors.name ?? "\u00A0"}
+              </p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="brand">Brand</Label>
@@ -163,17 +208,36 @@ export function AddBottleDialog({
           </div>
 
           {/* Size */}
-          <div className="space-y-2">
-            <Label htmlFor="size">Size (ml)</Label>
+          <div className="relative space-y-2">
+            <Label htmlFor="size" className={errors.sizeMl ? "text-danger" : ""}>
+              Size (ml)
+            </Label>
             <Input
               id="size"
               type="number"
               value={sizeMl}
-              onChange={(e) => setSizeMl(e.target.value)}
+              onChange={(e) => {
+                setSizeMl(e.target.value);
+                clearError("sizeMl");
+              }}
               placeholder="100"
               min="1"
               step="1"
+              className={
+                errors.sizeMl
+                  ? "border-danger focus:border-danger focus:ring-danger"
+                  : ""
+              }
+              aria-invalid={!!errors.sizeMl}
+              aria-describedby="size-error"
             />
+            <p
+              id="size-error"
+              role="alert"
+              className={`absolute -bottom-3 left-0 text-xs text-danger transition-opacity ${errors.sizeMl ? "opacity-100" : "opacity-0 pointer-events-none"}`}
+            >
+              {errors.sizeMl ?? "\u00A0"}
+            </p>
           </div>
 
           {/* Tags */}
@@ -241,7 +305,7 @@ export function AddBottleDialog({
             </Button>
             <Button
               type="submit"
-              disabled={!name.trim() || submitting}
+              disabled={submitting}
               aria-keyshortcuts="Control+Enter"
             >
               <span>

@@ -18,6 +18,7 @@ import {
   ArrowLeft,
 } from "lucide-react";
 import { useState } from "react";
+import { toast } from "sonner";
 
 interface BottleDetailProps {
   bottleId: Id<"bottles">;
@@ -71,8 +72,16 @@ export function BottleDetail({
       setConfirmDelete(true);
       return;
     }
-    await deleteBottle({ bottleId });
-    onClose();
+    try {
+      await deleteBottle({ bottleId });
+      toast.success("Fragrance deleted");
+      onClose();
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Failed to delete fragrance"
+      );
+      setConfirmDelete(false);
+    }
   };
 
   return (
