@@ -78,7 +78,7 @@ export function AddBottleDialog({
   const validate = (): boolean => {
     const newErrors: Record<string, string> = {};
     if (!name.trim()) newErrors.name = "Name is required";
-    if (sizeMl && Number(sizeMl) <= 0) newErrors.sizeMl = "Must be greater than 0";
+    if (sizeMl && Number(sizeMl) < 1) newErrors.sizeMl = "Must be at least 1";
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -153,10 +153,8 @@ export function AddBottleDialog({
           <DialogTitle>
             {isEditing ? "Edit Fragrance" : "Add Fragrance"}
           </DialogTitle>
-          <DialogDescription>
-            {isEditing
-              ? "Update the details of your fragrance."
-              : "Add a new fragrance to your collection."}
+          <DialogDescription className="sr-only">
+            {isEditing ? "Edit fragrance form" : "Add fragrance form"}
           </DialogDescription>
         </DialogHeader>
 
@@ -164,6 +162,7 @@ export function AddBottleDialog({
           ref={formRef}
           onSubmit={handleSubmit}
           onKeyDown={handleFormKeyDown}
+          noValidate
           className="space-y-5"
         >
           {/* Name + Brand side by side */}
@@ -234,7 +233,7 @@ export function AddBottleDialog({
             <p
               id="size-error"
               role="alert"
-              className={`absolute -bottom-3 left-0 text-xs text-danger transition-opacity ${errors.sizeMl ? "opacity-100" : "opacity-0 pointer-events-none"}`}
+              className={`absolute top-full left-0 mt-1 text-xs text-danger transition-opacity ${errors.sizeMl ? "opacity-100" : "opacity-0 pointer-events-none"}`}
             >
               {errors.sizeMl ?? "\u00A0"}
             </p>
