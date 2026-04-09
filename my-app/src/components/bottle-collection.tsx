@@ -56,7 +56,7 @@ export function BottleCollection({
         </div>
 
         {/* Grid Skeleton */}
-        <div className="flex-1 overflow-y-auto scrollbar-fade pb-5 pt-4">
+        <div className="flex-1 overflow-y-auto scrollbar-fade pb-5 pt-4 -mr-6 pr-6 lg:-mr-7 lg:pr-7">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {Array.from({ length: 6 }).map((_, i) => (
               <div
@@ -126,7 +126,7 @@ export function BottleCollection({
       </div>
 
       {/* Grid */}
-      <div className="flex-1 overflow-y-auto scrollbar-fade pb-5 pt-4">
+      <div className="flex-1 overflow-y-auto scrollbar-fade pb-5 pt-4 -mr-6 pr-6 lg:-mr-7 lg:pr-7">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {filteredBottles.map((bottle, i) => {
             const stats = getStats(bottle._id);

@@ -24,6 +24,8 @@ import {
 } from "@/components/ui/select";
 import { Kbd, KbdGroup } from "@/components/ui/kbd";
 import { useState, useEffect, useRef } from "react";
+import { toast } from "sonner";
+import { getApiErrorMessage } from "@/lib/utils";
 
 interface AddWearLogDialogProps {
   open: boolean;
@@ -56,14 +58,56 @@ export function AddWearLogDialog({
   const [rating, setRating] = useState("");
   const [comment, setComment] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [formError, setFormError] = useState<string | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
 
-  const handleFormKeyDown = (e: React.KeyboardEvent<HTMLFormElement>) => {
-    if (e.key !== "Enter" || !e.ctrlKey || e.shiftKey || e.metaKey) return;
-    if (!date || !sprays || submitting) return;
+  const clearError = (field: string) => {
+    setErrors((prev) => {
+      if (!prev[field]) return prev;
+      const next = { ...prev };
+      delete next[field];
+      return next;
+    });
+  };
 
-    e.preventDefault();
-    formRef.current?.requestSubmit();
+  const validate = (): boolean => {
+    const newErrors: Record<string, string> = {};
+    if (!date) newErrors.date = "Date is required";
+    const spraysNum = Number(sprays);
+    if (!sprays || isNaN(spraysNum) || spraysNum < 1 || spraysNum > 30) {
+      newErrors.sprays = "Must be between 1 and 30";
+    }
+    if (rating) {
+      const ratingNum = Number(rating);
+      if (isNaN(ratingNum) || ratingNum < 1 || ratingNum > 10) {
+        newErrors.rating = "Must be between 1 and 10";
+      }
+    }
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleFormKeyDown = (e: React.KeyboardEvent<HTMLFormElement>) => {
+    if (e.key !== "Enter") return;
+
+    // Allow plain Enter in textareas (for newlines)
+    if ((e.target as HTMLElement).tagName === "TEXTAREA" && !e.ctrlKey) return;
+
+    // Ctrl+Enter: submit the form
+    if (e.ctrlKey && !e.shiftKey && !e.metaKey) {
+      if (submitting) return;
+      e.preventDefault();
+      formRef.current?.requestSubmit();
+      return;
+    }
+
+    // Block plain Enter from submitting the form only on text/number inputs.
+    // Buttons, Select triggers, and other interactive controls are left
+    // unaffected so keyboard users can activate them normally.
+    if ((e.target as HTMLElement).tagName === "INPUT") {
+      e.preventDefault();
+    }
   };
 
   useEffect(() => {
@@ -81,12 +125,14 @@ export function AddWearLogDialog({
       setContext("");
       setRating("");
       setComment("");
+      setErrors({});
+      setFormError(null);
     }
   }, [open]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!date || !sprays) return;
+    if (!validate()) return;
 
     const wornAt = new Date(`${date}T${time || "12:00"}`).getTime();
     if (isNaN(wornAt)) return;
@@ -101,7 +147,15 @@ export function AddWearLogDialog({
         rating: rating ? Number(rating) : undefined,
         comment: comment.trim() || undefined,
       });
+      toast.success("Wear logged");
       onOpenChange(false);
+    } catch (err) {
+      if (process.env.NODE_ENV !== "production") {
+        console.error("Failed to log wear:", err);
+      }
+      const message = getApiErrorMessage(err);
+      toast.error(message);
+      setFormError(message);
     } finally {
       setSubmitting(false);
     }
@@ -117,18 +171,37 @@ export function AddWearLogDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <form ref={formRef} onSubmit={handleSubmit} onKeyDown={handleFormKeyDown} className="space-y-5">
+        <form ref={formRef} onSubmit={handleSubmit} onKeyDown={handleFormKeyDown} noValidate className="space-y-5">
           {/* Date + Time side by side */}
           <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="date">Date *</Label>
+            <div className="relative space-y-2">
+              <Label htmlFor="date" className={errors.date ? "text-danger" : ""}>
+                Date *
+              </Label>
               <Input
                 id="date"
                 type="date"
                 value={date}
-                onChange={(e) => setDate(e.target.value)}
+                onChange={(e) => {
+                  setDate(e.target.value);
+                  clearError("date");
+                }}
                 required
+                className={
+                  errors.date
+                    ? "border-danger focus:border-danger focus:ring-danger"
+                    : ""
+                }
+                aria-invalid={!!errors.date}
+                aria-describedby="date-error"
               />
+              <p
+                id="date-error"
+                role="alert"
+                className={`absolute -bottom-3 left-0 text-xs text-danger transition-opacity ${errors.date ? "opacity-100" : "opacity-0 pointer-events-none"}`}
+              >
+                {errors.date ?? "\u00A0"}
+              </p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="time">Time</Label>
@@ -143,29 +216,67 @@ export function AddWearLogDialog({
 
           {/* Sprays + Rating side by side */}
           <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="sprays">Sprays *</Label>
+            <div className="relative space-y-2">
+              <Label htmlFor="sprays" className={errors.sprays ? "text-danger" : ""}>
+                Sprays *
+              </Label>
               <Input
                 id="sprays"
                 type="number"
                 value={sprays}
-                onChange={(e) => setSprays(e.target.value)}
+                onChange={(e) => {
+                  setSprays(e.target.value);
+                  clearError("sprays");
+                }}
                 min="1"
                 max="30"
                 required
+                className={
+                  errors.sprays
+                    ? "border-danger focus:border-danger focus:ring-danger"
+                    : ""
+                }
+                aria-invalid={!!errors.sprays}
+                aria-describedby="sprays-error"
               />
+              <p
+                id="sprays-error"
+                role="alert"
+                className={`absolute -bottom-3 left-0 text-xs text-danger transition-opacity ${errors.sprays ? "opacity-100" : "opacity-0 pointer-events-none"}`}
+              >
+                {errors.sprays ?? "\u00A0"}
+              </p>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="rating">Rating (1-10)</Label>
+            <div className="relative space-y-2">
+              <Label htmlFor="rating" className={errors.rating ? "text-danger" : ""}>
+                Rating (1-10)
+              </Label>
               <Input
                 id="rating"
                 type="number"
                 value={rating}
-                onChange={(e) => setRating(e.target.value)}
+                onChange={(e) => {
+                  setRating(e.target.value);
+                  clearError("rating");
+                }}
                 min="1"
                 max="10"
                 placeholder="Optional"
+                className={
+                  errors.rating
+                    ? "border-danger focus:border-danger focus:ring-danger"
+                    : ""
+                }
+                aria-invalid={!!errors.rating}
+                aria-describedby="rating-error"
               />
+              <p
+                id="rating-error"
+                role="alert"
+                className={`absolute -bottom-3 left-0 text-xs text-danger transition-opacity ${errors.rating ? "opacity-100" : "opacity-0 pointer-events-none"}`}
+              >
+                {errors.rating ?? "\u00A0"}
+              </p>
             </div>
           </div>
 
@@ -199,6 +310,11 @@ export function AddWearLogDialog({
           </div>
 
           <DialogFooter>
+            {formError && (
+              <p role="alert" className="w-full rounded-lg border border-danger/30 bg-danger/5 px-3 py-2.5 text-sm text-danger">
+                {formError}
+              </p>
+            )}
             <Button
               type="button"
               variant="outline"
@@ -206,7 +322,7 @@ export function AddWearLogDialog({
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={!date || !sprays || submitting} aria-keyshortcuts="Control+Enter">
+            <Button type="submit" disabled={submitting} aria-keyshortcuts="Control+Enter">
               <span>{submitting ? "Logging..." : "Log Wear"}</span>
               {!submitting && (
                 <KbdGroup aria-hidden="true" className="ml-1">

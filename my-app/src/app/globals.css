@@ -91,7 +91,7 @@ body {
   color: var(--text);
   font-family: var(--font-geist-sans), system-ui, sans-serif;
   min-height: 100dvh;
-  overflow-x: hidden;
+  overflow: hidden;
   transition: background-color 0.3s ease, color 0.3s ease;
 }
 
@@ -123,6 +123,7 @@ body {
 @media (hover: hover) and (pointer: fine) {
   .scrollbar-fade {
     scrollbar-color: transparent transparent;
+    scrollbar-gutter: stable;
   }
 
   .scrollbar-fade::-webkit-scrollbar-thumb {
