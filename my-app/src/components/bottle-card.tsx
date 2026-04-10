@@ -1,5 +1,6 @@
 "use client";
 
+import { useRef, useState, useLayoutEffect } from "react";
 import { Doc } from "../../convex/_generated/dataModel";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -23,6 +24,47 @@ export function BottleCard({
   index,
 }: BottleCardProps) {
   const staggerClass = `stagger-${Math.min(index + 1, 8)}`;
+  const tags = bottle.tags ?? [];
+  const sizerRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [visibleCount, setVisibleCount] = useState(tags.length);
+
+  useLayoutEffect(() => {
+    const sizer = sizerRef.current;
+    const container = containerRef.current;
+    if (!sizer || !container || tags.length === 0) return;
+
+    const calculate = () => {
+      const containerWidth = container.clientWidth;
+      const tagEls = Array.from(sizer.querySelectorAll<HTMLElement>("[data-tag]"));
+      const gap = 6; // gap-1.5 = 6px
+      const plusW = 40; // conservative width for "+N" badge
+
+      let usedWidth = 0;
+      let count = 0;
+
+      for (let i = 0; i < tagEls.length; i++) {
+        const tagWidth = tagEls[i].getBoundingClientRect().width;
+        const addGap = i > 0 ? gap : 0;
+        const wouldShowAll = count + 1 === tags.length;
+        const plusSpace = wouldShowAll ? 0 : gap + plusW;
+
+        if (usedWidth + addGap + tagWidth + plusSpace <= containerWidth) {
+          usedWidth += addGap + tagWidth;
+          count++;
+        } else {
+          break;
+        }
+      }
+
+      setVisibleCount(count);
+    };
+
+    calculate();
+    const ro = new ResizeObserver(calculate);
+    ro.observe(container);
+    return () => ro.disconnect();
+  }, [bottle.tags]); // stable reference from Convex doc; `tags` is derived from it
 
   return (
     <button
@@ -33,7 +75,7 @@ export function BottleCard({
         "animate-fade-up opacity-0",
         staggerClass,
         isSelected
-          ? "border-accent bg-accent-subtle shadow-sm"
+          ? "border-accent bg-accent-subtle/60 shadow-sm"
           : "border-border bg-surface hover:border-border-hover"
       )}
     >
@@ -73,18 +115,34 @@ export function BottleCard({
       </div>
 
       {/* Tags */}
-      {bottle.tags && bottle.tags.length > 0 && (
-        <div className="flex flex-wrap gap-1.5 mt-3.5">
-          {bottle.tags.slice(0, 3).map((tag) => (
-            <Badge key={tag} variant="tag" className="text-[10px] px-2 py-0.5">
-              {tag}
-            </Badge>
-          ))}
-          {bottle.tags.length > 3 && (
-            <Badge variant="outline" className="text-[10px] px-2 py-0.5">
-              +{bottle.tags.length - 3}
-            </Badge>
-          )}
+      {tags.length > 0 && (
+        <div className="relative mt-3.5">
+          {/* Hidden sizer: renders all tags to measure their widths */}
+          <div
+            ref={sizerRef}
+            className="absolute inset-x-0 flex flex-nowrap gap-1.5 invisible pointer-events-none overflow-hidden"
+            aria-hidden="true"
+            tabIndex={-1}
+          >
+            {tags.map((tag) => (
+              <Badge key={tag} data-tag variant="tag" className="text-[10px] px-2 py-0.5 shrink-0">
+                {tag}
+              </Badge>
+            ))}
+          </div>
+          {/* Visible row: only shows tags that fit on one line */}
+          <div ref={containerRef} className="flex flex-nowrap gap-1.5 overflow-hidden">
+            {tags.slice(0, visibleCount).map((tag) => (
+              <Badge key={tag} variant="tag" className="text-[10px] px-2 py-0.5 shrink-0">
+                {tag}
+              </Badge>
+            ))}
+            {visibleCount < tags.length && (
+              <Badge variant="outline" className="text-[10px] px-2 py-0.5 shrink-0">
+                +{tags.length - visibleCount}
+              </Badge>
+            )}
+          </div>
         </div>
       )}
     </button>
