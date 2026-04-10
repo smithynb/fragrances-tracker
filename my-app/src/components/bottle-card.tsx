@@ -6,6 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { Droplets } from "lucide-react";
 
+const EMPTY_TAGS: string[] = [];
+
 interface BottleCardProps {
   bottle: Doc<"bottles">;
   isSelected: boolean;
@@ -24,7 +26,7 @@ export function BottleCard({
   index,
 }: BottleCardProps) {
   const staggerClass = `stagger-${Math.min(index + 1, 8)}`;
-  const tags = bottle.tags ?? [];
+  const tags = bottle.tags ?? EMPTY_TAGS;
   const sizerRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [visibleCount, setVisibleCount] = useState(tags.length);
@@ -64,13 +66,13 @@ export function BottleCard({
     const ro = new ResizeObserver(calculate);
     ro.observe(container);
     return () => ro.disconnect();
-  }, [bottle.tags]); // stable reference from Convex doc; `tags` is derived from it
+  }, [tags]);
 
   return (
     <button
       onClick={onClick}
       className={cn(
-        "group w-full text-left rounded-xl border px-6 py-5 transition-all duration-200 cursor-pointer",
+        "group w-full h-full flex flex-col text-left rounded-xl border px-6 py-5 transition-all duration-200 cursor-pointer",
         "hover:shadow-md hover:-translate-y-0.5",
         "animate-fade-up opacity-0",
         staggerClass,
@@ -97,54 +99,56 @@ export function BottleCard({
         )}
       </div>
 
-      {/* Stats row */}
-      <div className="flex items-center gap-4 mt-3.5">
-        {totalWears !== undefined && totalWears > 0 && (
-          <div className="flex items-center gap-1 text-xs text-text-secondary">
-            <Droplets className="h-3 w-3" />
-            <span>
-              {totalWears} wear{totalWears !== 1 ? "s" : ""}
-            </span>
-          </div>
-        )}
-        {totalSprays !== undefined && totalSprays > 0 && (
-          <div className="text-xs text-text-secondary">
-            {totalSprays} sprays
+      <div className="mt-auto">
+        {/* Stats row */}
+        <div className="flex items-center gap-4 mt-3.5">
+          {totalWears !== undefined && totalWears > 0 && (
+            <div className="flex items-center gap-1 text-xs text-text-secondary">
+              <Droplets className="h-3 w-3" />
+              <span>
+                {totalWears} wear{totalWears !== 1 ? "s" : ""}
+              </span>
+            </div>
+          )}
+          {totalSprays !== undefined && totalSprays > 0 && (
+            <div className="text-xs text-text-secondary">
+              {totalSprays} sprays
+            </div>
+          )}
+        </div>
+
+        {/* Tags */}
+        {tags.length > 0 && (
+          <div className="relative mt-3.5">
+            {/* Hidden sizer: renders all tags to measure their widths */}
+            <div
+              ref={sizerRef}
+              className="absolute inset-x-0 flex flex-nowrap gap-1.5 invisible pointer-events-none overflow-hidden"
+              aria-hidden="true"
+              tabIndex={-1}
+            >
+              {tags.map((tag) => (
+                <Badge key={tag} data-tag variant="tag" className="text-[10px] px-2 py-0.5 shrink-0">
+                  {tag}
+                </Badge>
+              ))}
+            </div>
+            {/* Visible row: only shows tags that fit on one line */}
+            <div ref={containerRef} className="flex flex-nowrap gap-1.5 overflow-hidden">
+              {tags.slice(0, visibleCount).map((tag) => (
+                <Badge key={tag} variant="tag" className="text-[10px] px-2 py-0.5 shrink-0">
+                  {tag}
+                </Badge>
+              ))}
+              {visibleCount < tags.length && (
+                <Badge variant="outline" className="text-[10px] px-2 py-0.5 shrink-0">
+                  +{tags.length - visibleCount}
+                </Badge>
+              )}
+            </div>
           </div>
         )}
       </div>
-
-      {/* Tags */}
-      {tags.length > 0 && (
-        <div className="relative mt-3.5">
-          {/* Hidden sizer: renders all tags to measure their widths */}
-          <div
-            ref={sizerRef}
-            className="absolute inset-x-0 flex flex-nowrap gap-1.5 invisible pointer-events-none overflow-hidden"
-            aria-hidden="true"
-            tabIndex={-1}
-          >
-            {tags.map((tag) => (
-              <Badge key={tag} data-tag variant="tag" className="text-[10px] px-2 py-0.5 shrink-0">
-                {tag}
-              </Badge>
-            ))}
-          </div>
-          {/* Visible row: only shows tags that fit on one line */}
-          <div ref={containerRef} className="flex flex-nowrap gap-1.5 overflow-hidden">
-            {tags.slice(0, visibleCount).map((tag) => (
-              <Badge key={tag} variant="tag" className="text-[10px] px-2 py-0.5 shrink-0">
-                {tag}
-              </Badge>
-            ))}
-            {visibleCount < tags.length && (
-              <Badge variant="outline" className="text-[10px] px-2 py-0.5 shrink-0">
-                +{tags.length - visibleCount}
-              </Badge>
-            )}
-          </div>
-        </div>
-      )}
     </button>
   );
 }
