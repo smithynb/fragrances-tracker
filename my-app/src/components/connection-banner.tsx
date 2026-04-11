@@ -1,7 +1,7 @@
 "use client";
 
 import { useConvex } from "convex/react";
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { WifiOff } from "lucide-react";
 
 const DEBOUNCE_MS = 2000;
@@ -24,67 +24,79 @@ function getServerOnline() {
   return true;
 }
 
-export function ConnectionBanner() {
+type ConvexConnStatus = { isConnected: boolean; hasEverConnected: boolean };
+const SERVER_CONN_STATUS: ConvexConnStatus = { isConnected: false, hasEverConnected: false };
+
+function useConvexConnStatus(): ConvexConnStatus {
   const convex = useConvex();
+  const cachedRef = useRef<ConvexConnStatus>(SERVER_CONN_STATUS);
+  const subscribe = useCallback(
+    (cb: () => void) => convex.subscribeToConnectionState(cb),
+    [convex],
+  );
+  const getSnapshot = useCallback(() => {
+    const state = convex.connectionState();
+    const prev = cachedRef.current;
+    if (
+      prev.isConnected === state.isWebSocketConnected &&
+      prev.hasEverConnected === state.hasEverConnected
+    ) {
+      return prev;
+    }
+    const next = {
+      isConnected: state.isWebSocketConnected,
+      hasEverConnected: state.hasEverConnected,
+    };
+    cachedRef.current = next;
+    return next;
+  }, [convex]);
+  return useSyncExternalStore(subscribe, getSnapshot, () => SERVER_CONN_STATUS);
+}
+
+export function ConnectionBanner() {
   const browserOnline = useSyncExternalStore(
     subscribeBrowserOnline,
     getBrowserOnline,
     getServerOnline,
   );
-  const [wsDisconnected, setWsDisconnected] = useState(false);
-  const [initialConnectTimedOut, setInitialConnectTimedOut] = useState(false);
+  const connStatus = useConvexConnStatus();
+  const [graceTimerFired, setGraceTimerFired] = useState(false);
   const [showBanner, setShowBanner] = useState(false);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const graceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Start grace timer only when we haven't connected yet
   useEffect(() => {
-    if (!initialConnectTimedOut) {
-      graceTimerRef.current = setTimeout(() => {
-        setInitialConnectTimedOut(true);
-      }, INITIAL_CONNECT_GRACE_MS);
-    }
+    if (connStatus.hasEverConnected) return;
+    const timer = setTimeout(() => {
+      setGraceTimerFired(true);
+    }, INITIAL_CONNECT_GRACE_MS);
+    return () => clearTimeout(timer);
+  }, [connStatus.hasEverConnected]);
 
-    const unsubscribe = convex.subscribeToConnectionState((state) => {
-      if (state.hasEverConnected && graceTimerRef.current) {
-        clearTimeout(graceTimerRef.current);
-        graceTimerRef.current = null;
-      }
-      setWsDisconnected(
-        !state.isWebSocketConnected &&
-          (state.hasEverConnected || initialConnectTimedOut),
-      );
-    });
-    return () => {
-      unsubscribe();
-      if (graceTimerRef.current) {
-        clearTimeout(graceTimerRef.current);
-        graceTimerRef.current = null;
-      }
-    };
-  }, [convex, initialConnectTimedOut]);
+  // Derive disconnected status — hasEverConnected is used directly, no state needed
+  const isDisconnected =
+    !browserOnline ||
+    (!connStatus.isConnected &&
+      (connStatus.hasEverConnected || graceTimerFired));
 
-  const isDisconnected = !browserOnline || wsDisconnected;
-
+  // Debounce: only set showBanner=true after sustained disconnection
   useEffect(() => {
-    if (isDisconnected) {
-      if (!timerRef.current) {
-        timerRef.current = setTimeout(() => {
-          setShowBanner(true);
-          timerRef.current = null;
-        }, DEBOUNCE_MS);
-      }
-    } else {
-      if (timerRef.current) {
-        clearTimeout(timerRef.current);
-        timerRef.current = null;
+    if (!isDisconnected) {
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+        debounceRef.current = null;
       }
       setShowBanner(false);
+      return;
     }
-
+    debounceRef.current = setTimeout(() => {
+      setShowBanner(true);
+      debounceRef.current = null;
+    }, DEBOUNCE_MS);
     return () => {
-      if (timerRef.current) {
-        clearTimeout(timerRef.current);
-        timerRef.current = null;
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+        debounceRef.current = null;
       }
     };
   }, [isDisconnected]);
