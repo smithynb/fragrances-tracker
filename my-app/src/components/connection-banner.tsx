@@ -5,6 +5,7 @@ import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { WifiOff } from "lucide-react";
 
 const DEBOUNCE_MS = 2000;
+const INITIAL_CONNECT_GRACE_MS = 5000;
 
 function subscribeBrowserOnline(cb: () => void) {
   window.addEventListener("online", cb);
@@ -31,17 +32,36 @@ export function ConnectionBanner() {
     getServerOnline,
   );
   const [wsDisconnected, setWsDisconnected] = useState(false);
+  const [initialConnectTimedOut, setInitialConnectTimedOut] = useState(false);
   const [showBanner, setShowBanner] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const graceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
+    if (!initialConnectTimedOut) {
+      graceTimerRef.current = setTimeout(() => {
+        setInitialConnectTimedOut(true);
+      }, INITIAL_CONNECT_GRACE_MS);
+    }
+
     const unsubscribe = convex.subscribeToConnectionState((state) => {
+      if (state.hasEverConnected && graceTimerRef.current) {
+        clearTimeout(graceTimerRef.current);
+        graceTimerRef.current = null;
+      }
       setWsDisconnected(
-        !state.isWebSocketConnected && state.hasEverConnected,
+        !state.isWebSocketConnected &&
+          (state.hasEverConnected || initialConnectTimedOut),
       );
     });
-    return () => unsubscribe();
-  }, [convex]);
+    return () => {
+      unsubscribe();
+      if (graceTimerRef.current) {
+        clearTimeout(graceTimerRef.current);
+        graceTimerRef.current = null;
+      }
+    };
+  }, [convex, initialConnectTimedOut]);
 
   const isDisconnected = !browserOnline || wsDisconnected;
 
