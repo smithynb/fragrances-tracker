@@ -5,6 +5,7 @@ import { ConvexReactClient } from "convex/react";
 import { ThemeProvider } from "next-themes";
 import { Toaster } from "sonner";
 import { type ReactNode } from "react";
+import { ConnectionBanner } from "@/components/connection-banner";
 
 const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL;
 
@@ -21,6 +22,7 @@ export function Providers({ children }: { children: ReactNode }) {
   return (
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
       <ConvexAuthNextjsProvider client={convex}>
+        <ConnectionBanner />
         {children}
         <Toaster
           position="bottom-right"
