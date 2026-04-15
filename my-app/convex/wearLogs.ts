@@ -44,10 +44,10 @@ export const listWearLogs = query({
       return [];
     }
 
-    // Uses the by_user index — no full-table scan, no in-memory filter.
+    // Uses the by_user_time index so results arrive sorted by wornAt.
     return await ctx.db
       .query("wearLogs")
-      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .withIndex("by_user_time", (q) => q.eq("userId", userId))
       .order("desc")
       .collect();
   },
