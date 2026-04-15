@@ -34,8 +34,9 @@ export default defineSchema({
   })
     .index("by_bottle", ["bottleId"])
     .index("by_bottle_time", ["bottleId", "wornAt"])
-    // Efficient full-user log listing, ordered by wornAt descending via .order()
     .index("by_user", ["userId"])
+    // Efficient full-user log listing, ordered by wornAt descending via .order()
+    .index("by_user_time", ["userId", "wornAt"])
     // Efficient per-user, per-bottle listing ordered by wornAt; eliminates JS-side filter
     .index("by_user_bottle_time", ["userId", "bottleId", "wornAt"]),
 });
