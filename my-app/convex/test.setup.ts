@@ -5,7 +5,6 @@ import schema from "./schema";
 
 const modules = import.meta.glob([
   "./**/*.{ts,tsx,js,jsx,mjs,cjs}",
-  "!./_generated/**",
   "!./**/*.test.*",
 ]);
 
