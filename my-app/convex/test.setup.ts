@@ -3,7 +3,11 @@ import { convexTest } from "convex-test";
 import { register as registerRateLimiter } from "@convex-dev/rate-limiter/test";
 import schema from "./schema";
 
-const modules = import.meta.glob("./**/*.*s");
+const modules = import.meta.glob([
+  "./**/*.{ts,tsx,js,jsx,mjs,cjs}",
+  "!./_generated/**",
+  "!./**/*.test.*",
+]);
 
 export function setupTest() {
   const t = convexTest(schema, modules);
