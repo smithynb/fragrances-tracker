@@ -2,7 +2,7 @@
 
 import { useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
-import { Id } from "../../convex/_generated/dataModel";
+import { Doc } from "../../convex/_generated/dataModel";
 import {
   Dialog,
   DialogContent,
@@ -30,22 +30,20 @@ import { MAX_SPRAYS, CONTEXT_OPTIONS } from "@/lib/constants";
 
 const NO_CONTEXT_VALUE = "__none__";
 
-interface AddWearLogDialogProps {
+interface EditWearLogDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  bottleId: Id<"bottles">;
+  log: Doc<"wearLogs">;
 }
 
-export function AddWearLogDialog({
+export function EditWearLogDialog({
   open,
   onOpenChange,
-  bottleId,
-}: AddWearLogDialogProps) {
-  const addWearLog = useMutation(api.wearLogs.addWearLog);
+  log,
+}: EditWearLogDialogProps) {
+  const updateWearLog = useMutation(api.wearLogs.updateWearLog);
 
-  const [date, setDate] = useState("");
-  const [time, setTime] = useState("");
-  const [sprays, setSprays] = useState("3");
+  const [sprays, setSprays] = useState("");
   const [context, setContext] = useState("");
   const [rating, setRating] = useState("");
   const [comment, setComment] = useState("");
@@ -65,7 +63,6 @@ export function AddWearLogDialog({
 
   const validate = (): boolean => {
     const newErrors: Record<string, string> = {};
-    if (!date) newErrors.date = "Date is required";
     const spraysNum = Number(sprays);
     if (!sprays || isNaN(spraysNum) || spraysNum < 1 || spraysNum > MAX_SPRAYS) {
       newErrors.sprays = `Must be between 1 and ${MAX_SPRAYS}`;
@@ -95,55 +92,41 @@ export function AddWearLogDialog({
     }
 
     // Block plain Enter from submitting the form only on text/number inputs.
-    // Buttons, Select triggers, and other interactive controls are left
-    // unaffected so keyboard users can activate them normally.
     if ((e.target as HTMLElement).tagName === "INPUT") {
       e.preventDefault();
     }
   };
 
+  // Pre-populate form fields from the log when the dialog opens
   useEffect(() => {
     if (open) {
-      const now = new Date();
-      setDate(now.toLocaleDateString("en-CA"));
-      setTime(
-        now.toLocaleTimeString("en-US", {
-          hour12: false,
-          hour: "2-digit",
-          minute: "2-digit",
-        })
-      );
-      setSprays("3");
-      setContext("");
-      setRating("");
-      setComment("");
+      setSprays(String(log.sprays));
+      setContext(log.context ?? "");
+      setRating(log.rating !== undefined ? String(log.rating) : "");
+      setComment(log.comment ?? "");
       setErrors({});
       setFormError(null);
     }
-  }, [open]);
+  }, [open, log]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
 
-    const wornAt = new Date(`${date}T${time || "12:00"}`).getTime();
-    if (isNaN(wornAt)) return;
-
     setSubmitting(true);
     try {
-      await addWearLog({
-        bottleId,
-        wornAt,
+      await updateWearLog({
+        wearLogId: log._id,
         sprays: Number(sprays),
-        context: context || undefined,
-        rating: rating ? Number(rating) : undefined,
-        comment: comment.trim() || undefined,
+        context: context || null,
+        rating: rating ? Number(rating) : null,
+        comment: comment.trim() || null,
       });
-      toast.success("Wear logged");
+      toast.success("Wear log updated");
       onOpenChange(false);
     } catch (err) {
       if (process.env.NODE_ENV !== "production") {
-        console.error("Failed to log wear:", err);
+        console.error("Failed to update wear log:", err);
       }
       const message = getApiErrorMessage(err);
       toast.error(message);
@@ -153,67 +136,60 @@ export function AddWearLogDialog({
     }
   };
 
+  const formatReadOnlyDate = (timestamp: number) => {
+    const d = new Date(timestamp);
+    return d.toLocaleDateString("en-US", {
+      weekday: "short",
+      month: "short",
+      day: "numeric",
+      year:
+        d.getFullYear() !== new Date().getFullYear() ? "numeric" : undefined,
+    });
+  };
+
+  const formatReadOnlyTime = (timestamp: number) => {
+    const d = new Date(timestamp);
+    return d.toLocaleTimeString("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+    });
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Log a Wear</DialogTitle>
+          <DialogTitle>Edit Wear Log</DialogTitle>
           <DialogDescription>
-            Record when you wore this fragrance.
+            Update your notes for this wear.
           </DialogDescription>
         </DialogHeader>
 
         <form ref={formRef} onSubmit={handleSubmit} onKeyDown={handleFormKeyDown} noValidate className="space-y-5">
-          {/* Date + Time side by side */}
+          {/* Read-only date/time */}
           <div className="grid grid-cols-2 gap-4">
-            <div className="relative space-y-2">
-              <Label htmlFor="date" className={errors.date ? "text-danger" : ""}>
-                Date *
-              </Label>
-              <Input
-                id="date"
-                type="date"
-                value={date}
-                onChange={(e) => {
-                  setDate(e.target.value);
-                  clearError("date");
-                }}
-                required
-                className={
-                  errors.date
-                    ? "border-danger focus:border-danger focus:ring-danger"
-                    : ""
-                }
-                aria-invalid={!!errors.date}
-                aria-describedby="date-error"
-              />
-              <p
-                id="date-error"
-                role="alert"
-                className={`absolute -bottom-3 left-0 text-xs text-danger transition-opacity ${errors.date ? "opacity-100" : "opacity-0 pointer-events-none"}`}
-              >
-                {errors.date ?? "\u00A0"}
-              </p>
+            <div className="space-y-2">
+              <Label className="text-text-secondary/60">Date</Label>
+              <div className="flex h-10 w-full items-center rounded-xl border border-border/40 bg-surface-alt/50 px-4 text-sm text-text-secondary/60 select-none cursor-not-allowed">
+                {formatReadOnlyDate(log.wornAt)}
+              </div>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="time">Time</Label>
-              <Input
-                id="time"
-                type="time"
-                value={time}
-                onChange={(e) => setTime(e.target.value)}
-              />
+              <Label className="text-text-secondary/60">Time</Label>
+              <div className="flex h-10 w-full items-center rounded-xl border border-border/40 bg-surface-alt/50 px-4 text-sm text-text-secondary/60 select-none cursor-not-allowed">
+                {formatReadOnlyTime(log.wornAt)}
+              </div>
             </div>
           </div>
 
           {/* Sprays + Rating side by side */}
           <div className="grid grid-cols-2 gap-4">
             <div className="relative space-y-2">
-              <Label htmlFor="sprays" className={errors.sprays ? "text-danger" : ""}>
+              <Label htmlFor="edit-sprays" className={errors.sprays ? "text-danger" : ""}>
                 Sprays *
               </Label>
               <Input
-                id="sprays"
+                id="edit-sprays"
                 type="number"
                 value={sprays}
                 onChange={(e) => {
@@ -229,10 +205,10 @@ export function AddWearLogDialog({
                     : ""
                 }
                 aria-invalid={!!errors.sprays}
-                aria-describedby="sprays-error"
+                aria-describedby="edit-sprays-error"
               />
               <p
-                id="sprays-error"
+                id="edit-sprays-error"
                 role="alert"
                 className={`absolute -bottom-3 left-0 text-xs text-danger transition-opacity ${errors.sprays ? "opacity-100" : "opacity-0 pointer-events-none"}`}
               >
@@ -240,11 +216,11 @@ export function AddWearLogDialog({
               </p>
             </div>
             <div className="relative space-y-2">
-              <Label htmlFor="rating" className={errors.rating ? "text-danger" : ""}>
+              <Label htmlFor="edit-rating" className={errors.rating ? "text-danger" : ""}>
                 Rating (1-10)
               </Label>
               <Input
-                id="rating"
+                id="edit-rating"
                 type="number"
                 value={rating}
                 onChange={(e) => {
@@ -260,10 +236,10 @@ export function AddWearLogDialog({
                     : ""
                 }
                 aria-invalid={!!errors.rating}
-                aria-describedby="rating-error"
+                aria-describedby="edit-rating-error"
               />
               <p
-                id="rating-error"
+                id="edit-rating-error"
                 role="alert"
                 className={`absolute -bottom-3 left-0 text-xs text-danger transition-opacity ${errors.rating ? "opacity-100" : "opacity-0 pointer-events-none"}`}
               >
@@ -297,9 +273,9 @@ export function AddWearLogDialog({
 
           {/* Comment */}
           <div className="space-y-2">
-            <Label htmlFor="comment">Comments</Label>
+            <Label htmlFor="edit-comment">Comments</Label>
             <Textarea
-              id="comment"
+              id="edit-comment"
               value={comment}
               onChange={(e) => setComment(e.target.value)}
               placeholder="Performance comments, compliments received..."
@@ -321,7 +297,7 @@ export function AddWearLogDialog({
               Cancel
             </Button>
             <Button type="submit" disabled={submitting} aria-keyshortcuts="Control+Enter">
-              <span>{submitting ? "Logging..." : "Log Wear"}</span>
+              <span>{submitting ? "Saving..." : "Save Changes"}</span>
               {!submitting && (
                 <KbdGroup aria-hidden="true" className="ml-1">
                   <Kbd className="border-white/20 bg-white/14 text-white shadow-[inset_0_-1px_0_rgba(255,255,255,0.18)]">

@@ -1,4 +1,4 @@
-import { expect, test, describe } from "vitest";
+import { expect, test, describe, vi } from "vitest";
 import { api } from "./_generated/api";
 import { setupTest, createTestUser } from "./test.setup";
 
@@ -430,8 +430,42 @@ describe("listBottleStats", () => {
     });
 
     const stats = await user.as.query(api.wearLogs.listBottleStats);
-    expect(stats[bottleA]).toEqual({ wears: 2, sprays: 8 });
-    expect(stats[bottleB]).toEqual({ wears: 1, sprays: 2 });
+    expect(stats[bottleA]).toEqual({ wears: 2, sprays: 8, avgRating: null });
+    expect(stats[bottleB]).toEqual({ wears: 1, sprays: 2, avgRating: null });
+  });
+
+  test("aggregates average rating from rated logs only", async () => {
+    const t = setupTest();
+    const user = await createTestUser(t);
+    const bottleA = await addBottle(user.as, "A");
+    const bottleB = await addBottle(user.as, "B");
+
+    await user.as.mutation(api.wearLogs.addWearLog, {
+      bottleId: bottleA,
+      wornAt: Date.now(),
+      sprays: 3,
+      rating: 8,
+    });
+    await user.as.mutation(api.wearLogs.addWearLog, {
+      bottleId: bottleA,
+      wornAt: Date.now(),
+      sprays: 4,
+      rating: 6,
+    });
+    await user.as.mutation(api.wearLogs.addWearLog, {
+      bottleId: bottleA,
+      wornAt: Date.now(),
+      sprays: 2,
+    });
+    await user.as.mutation(api.wearLogs.addWearLog, {
+      bottleId: bottleB,
+      wornAt: Date.now(),
+      sprays: 1,
+    });
+
+    const stats = await user.as.query(api.wearLogs.listBottleStats);
+    expect(stats[bottleA]).toEqual({ wears: 3, sprays: 9, avgRating: 7 });
+    expect(stats[bottleB]).toEqual({ wears: 1, sprays: 1, avgRating: null });
   });
 
   test("returns empty after all logs deleted", async () => {
@@ -751,6 +785,47 @@ describe("validation", () => {
       }),
     ).rejects.toThrowError("Context must be at most 200 characters.");
   });
+
+  test("wornAt beyond the future tolerance is rejected", async () => {
+    const now = 1_700_000_000_000;
+    const nowSpy = vi.spyOn(Date, "now").mockReturnValue(now);
+    try {
+      const t = setupTest();
+      const user = await createTestUser(t);
+      const bottleId = await addBottle(user.as);
+      await expect(
+        user.as.mutation(api.wearLogs.addWearLog, {
+          bottleId,
+          wornAt: now + 60_001,
+          sprays: 1,
+        }),
+      ).rejects.toThrowError("wornAt cannot be in the future.");
+    } finally {
+      nowSpy.mockRestore();
+    }
+  });
+
+  test("wornAt within the future tolerance is accepted", async () => {
+    const now = 1_700_000_000_000;
+    const nowSpy = vi.spyOn(Date, "now").mockReturnValue(now);
+    try {
+      const t = setupTest();
+      const user = await createTestUser(t);
+      const bottleId = await addBottle(user.as);
+      const logId = await user.as.mutation(api.wearLogs.addWearLog, {
+        bottleId,
+        wornAt: now + 60_000,
+        sprays: 1,
+      });
+
+      const log = await user.as.query(api.wearLogs.getWearLog, {
+        wearLogId: logId,
+      });
+      expect(log!.wornAt).toBe(now + 60_000);
+    } finally {
+      nowSpy.mockRestore();
+    }
+  });
 });
 
 // ── P2: updateWearLog validation ─────────────────────────────────────────────
@@ -906,5 +981,56 @@ describe("updateWearLog validation", () => {
         wornAt: 0,
       }),
     ).rejects.toThrowError("wornAt must be a positive Unix timestamp (ms).");
+  });
+
+  test("wornAt beyond the future tolerance is rejected", async () => {
+    const now = 1_700_000_000_000;
+    const nowSpy = vi.spyOn(Date, "now").mockReturnValue(now);
+    try {
+      const t = setupTest();
+      const user = await createTestUser(t);
+      const bottleId = await addBottle(user.as);
+      const logId = await user.as.mutation(api.wearLogs.addWearLog, {
+        bottleId,
+        wornAt: now,
+        sprays: 1,
+      });
+
+      await expect(
+        user.as.mutation(api.wearLogs.updateWearLog, {
+          wearLogId: logId,
+          wornAt: now + 60_001,
+        }),
+      ).rejects.toThrowError("wornAt cannot be in the future.");
+    } finally {
+      nowSpy.mockRestore();
+    }
+  });
+
+  test("wornAt within the future tolerance is accepted", async () => {
+    const now = 1_700_000_000_000;
+    const nowSpy = vi.spyOn(Date, "now").mockReturnValue(now);
+    try {
+      const t = setupTest();
+      const user = await createTestUser(t);
+      const bottleId = await addBottle(user.as);
+      const logId = await user.as.mutation(api.wearLogs.addWearLog, {
+        bottleId,
+        wornAt: now,
+        sprays: 1,
+      });
+
+      await user.as.mutation(api.wearLogs.updateWearLog, {
+        wearLogId: logId,
+        wornAt: now + 60_000,
+      });
+
+      const log = await user.as.query(api.wearLogs.getWearLog, {
+        wearLogId: logId,
+      });
+      expect(log!.wornAt).toBe(now + 60_000);
+    } finally {
+      nowSpy.mockRestore();
+    }
   });
 });

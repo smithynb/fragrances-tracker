@@ -81,14 +81,19 @@ export function ConnectionBanner() {
 
   // Debounce: only set showBanner=true after sustained disconnection
   useEffect(() => {
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+      debounceRef.current = null;
+    }
+
     if (!isDisconnected) {
-      if (debounceRef.current) {
-        clearTimeout(debounceRef.current);
+      debounceRef.current = setTimeout(() => {
+        setShowBanner(false);
         debounceRef.current = null;
-      }
-      setShowBanner(false);
+      }, 0);
       return;
     }
+
     debounceRef.current = setTimeout(() => {
       setShowBanner(true);
       debounceRef.current = null;
