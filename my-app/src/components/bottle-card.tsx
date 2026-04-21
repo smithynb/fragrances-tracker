@@ -4,7 +4,7 @@ import { useRef, useState, useLayoutEffect } from "react";
 import { Doc } from "../../convex/_generated/dataModel";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { Droplets } from "lucide-react";
+import { Droplets, Star } from "lucide-react";
 
 const EMPTY_TAGS: string[] = [];
 
@@ -14,6 +14,7 @@ interface BottleCardProps {
   onClick: () => void;
   totalSprays?: number;
   totalWears?: number;
+  avgRating?: number | null;
   index: number;
 }
 
@@ -23,6 +24,7 @@ export function BottleCard({
   onClick,
   totalSprays,
   totalWears,
+  avgRating,
   index,
 }: BottleCardProps) {
   const staggerClass = `stagger-${Math.min(index + 1, 8)}`;
@@ -113,6 +115,14 @@ export function BottleCard({
           {totalSprays !== undefined && totalSprays > 0 && (
             <div className="text-xs text-text-secondary">
               {totalSprays} sprays
+            </div>
+          )}
+          {avgRating != null && avgRating > 0 && (
+            <div className="flex items-center gap-1 text-xs text-text-secondary">
+              <Star className="h-3 w-3 fill-current" />
+              <span>
+                {avgRating % 1 === 0 ? avgRating.toFixed(0) : avgRating.toFixed(1)}
+              </span>
             </div>
           )}
         </div>

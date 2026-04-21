@@ -2,12 +2,13 @@ import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { getOptionalUserId, getUserId } from "./helpers";
 import { rateLimiter } from "./rateLimits";
+import { MAX_SPRAYS } from "../src/lib/constants";
 
 // ── Validation constants ──────────────────────────────────────────────────────
 
 const MAX_COMMENT_LENGTH = 2000;
 const MAX_CONTEXT_LENGTH = 200;
-const MAX_SPRAYS = 100;
+const FUTURE_WORN_AT_TOLERANCE_MS = 60_000;
 
 // ── Queries ──────────────────────────────────────────────────────────────────
 
@@ -23,16 +24,39 @@ export const listBottleStats = query({
       .query("wearLogs")
       .withIndex("by_user", (q) => q.eq("userId", userId))
       .collect();
-    // Aggregate wear count and spray totals per bottle server-side so the
-    // collection view never needs to download the full wear-log history.
-    const stats = new Map<string, { wears: number; sprays: number }>();
+    // Aggregate wear count, spray totals, and average rating per bottle
+    // server-side so the collection view never needs to download the full
+    // wear-log history.
+    const stats = new Map<
+      string,
+      { wears: number; sprays: number; ratingSum: number; ratingCount: number }
+    >();
     for (const log of logs) {
-      const existing = stats.get(log.bottleId) ?? { wears: 0, sprays: 0 };
+      const existing = stats.get(log.bottleId) ?? {
+        wears: 0,
+        sprays: 0,
+        ratingSum: 0,
+        ratingCount: 0,
+      };
       existing.wears += 1;
       existing.sprays += log.sprays;
+      if (typeof log.rating === "number") {
+        existing.ratingSum += log.rating;
+        existing.ratingCount += 1;
+      }
       stats.set(log.bottleId, existing);
     }
-    return Object.fromEntries(stats);
+    return Object.fromEntries(
+      Array.from(stats.entries()).map(([bottleId, s]) => [
+        bottleId,
+        {
+          wears: s.wears,
+          sprays: s.sprays,
+          avgRating:
+            s.ratingCount > 0 ? s.ratingSum / s.ratingCount : null,
+        },
+      ]),
+    );
   },
 });
 
@@ -93,6 +117,9 @@ export const getWearLog = query({
 function assertValidWornAt(wornAt: number): void {
   if (wornAt <= 0) {
     throw new Error("wornAt must be a positive Unix timestamp (ms).");
+  }
+  if (wornAt > Date.now() + FUTURE_WORN_AT_TOLERANCE_MS) {
+    throw new Error("wornAt cannot be in the future.");
   }
 }
 

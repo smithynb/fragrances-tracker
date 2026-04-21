@@ -6,14 +6,18 @@ import { api } from "../../convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
+import { EditWearLogDialog } from "@/components/edit-wear-log-dialog";
 import {
   Droplets,
   Calendar,
   Star,
   MessageSquare,
+  Pencil,
   Trash2,
 } from "lucide-react";
 import { useState } from "react";
+import { toast } from "sonner";
+import { getApiErrorMessage } from "@/lib/utils";
 
 interface WearLogListProps {
   logs: Doc<"wearLogs">[];
@@ -22,6 +26,7 @@ interface WearLogListProps {
 export function WearLogList({ logs }: WearLogListProps) {
   const deleteLog = useMutation(api.wearLogs.deleteWearLog);
   const [deletingId, setDeletingId] = useState<Id<"wearLogs"> | null>(null);
+  const [editingLog, setEditingLog] = useState<Doc<"wearLogs"> | null>(null);
 
   if (logs.length === 0) {
     return (
@@ -42,8 +47,16 @@ export function WearLogList({ logs }: WearLogListProps) {
       setDeletingId(logId);
       return;
     }
-    await deleteLog({ wearLogId: logId });
-    setDeletingId(null);
+    try {
+      await deleteLog({ wearLogId: logId });
+      setDeletingId(null);
+    } catch (err) {
+      setDeletingId(null);
+      if (process.env.NODE_ENV !== "production") {
+        console.error("Failed to delete wear log:", err);
+      }
+      toast.error(getApiErrorMessage(err));
+    }
   };
 
   const formatDate = (timestamp: number) => {
@@ -130,31 +143,56 @@ export function WearLogList({ logs }: WearLogListProps) {
                   )}
                 </div>
 
-                {/* Delete */}
-                <Button
-                  variant={deletingId === log._id ? "destructive" : "ghost"}
-                  onClick={() => handleDelete(log._id)}
-                  onMouseLeave={() => setDeletingId(null)}
-                  className={cn(
-                    "h-8 transition-all duration-300 ease-out opacity-0 group-hover:opacity-100 shrink-0 overflow-hidden relative gap-0",
-                    deletingId === log._id ? "w-[100px] px-3" : "w-8 px-0 justify-center"
-                  )}
-                >
-                  <Trash2 className="h-3.5 w-3.5 shrink-0 z-10" />
-                  <span
+                {/* Edit + Delete */}
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setEditingLog(log)}
+                    className="h-8 w-8 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100 focus-visible:opacity-100 transition-all duration-200 border border-white/15 bg-white/8 hover:bg-white/15"
+                    aria-label="Edit wear log"
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button
+                    variant={deletingId === log._id ? "destructive" : "ghost"}
+                    onClick={() => handleDelete(log._id)}
+                    onMouseLeave={() => setDeletingId(null)}
+                    aria-label={
+                      deletingId === log._id
+                        ? "Confirm delete wear log"
+                        : "Delete wear log"
+                    }
                     className={cn(
-                      "overflow-hidden transition-all duration-300 ease-out whitespace-nowrap text-xs flex items-center z-10",
-                      deletingId === log._id ? "w-[56px] ml-1.5 opacity-100" : "w-0 ml-0 opacity-0"
+                      "h-8 transition-all duration-300 ease-out opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100 focus-visible:opacity-100 shrink-0 overflow-hidden relative gap-0",
+                      deletingId === log._id ? "w-[100px] px-3" : "w-8 px-0 justify-center"
                     )}
                   >
-                    Confirm
-                  </span>
-                </Button>
+                    <Trash2 className="h-3.5 w-3.5 shrink-0 z-10" />
+                    <span
+                      aria-hidden={deletingId !== log._id}
+                      className={cn(
+                        "overflow-hidden transition-all duration-300 ease-out whitespace-nowrap text-xs flex items-center z-10",
+                        deletingId === log._id ? "w-[56px] ml-1.5 opacity-100" : "w-0 ml-0 opacity-0"
+                      )}
+                    >
+                      Confirm
+                    </span>
+                  </Button>
+                </div>
               </div>
             ))}
           </div>
         </div>
       ))}
+
+      {editingLog && (
+        <EditWearLogDialog
+          open={!!editingLog}
+          onOpenChange={(open) => { if (!open) setEditingLog(null); }}
+          log={editingLog}
+        />
+      )}
     </div>
   );
 }

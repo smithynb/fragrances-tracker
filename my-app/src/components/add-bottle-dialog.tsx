@@ -89,7 +89,7 @@ export function AddBottleDialog({
 
   const handleAddTag = () => {
     const trimmed = tagInput.trim();
-    if (trimmed && !tags.includes(trimmed)) {
+    if (trimmed && !tags.some((t) => t.toLowerCase() === trimmed.toLowerCase())) {
       setTags([...tags, trimmed]);
     }
     setTagInput("");

@@ -4,10 +4,30 @@ import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { Id } from "../../convex/_generated/dataModel";
 import { BottleCard } from "@/components/bottle-card";
+import {
+  filterAndSortBottles,
+  getBottleStats,
+  getNextSortState,
+  type SortDir,
+  type SortOption,
+} from "@/lib/bottle-collection-sort";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Wine } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "@/components/ui/dropdown-menu";
+import { Plus, Wine, ArrowUpDown, ArrowUp, ArrowDown, Check } from "lucide-react";
 import { useState, useMemo } from "react";
+
+const SORT_LABELS: Record<SortOption, string> = {
+  created: "Date Added",
+  name: "Name",
+  wears: "Wears",
+  rating: "Rating",
+};
 
 interface BottleCollectionProps {
   selectedBottleId: Id<"bottles"> | null;
@@ -23,21 +43,25 @@ export function BottleCollection({
   const bottles = useQuery(api.bottles.listBottles);
   const bottleStats = useQuery(api.wearLogs.listBottleStats);
   const [search, setSearch] = useState("");
+  const [sortBy, setSortBy] = useState<SortOption>("created");
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
 
-  const getStats = (bottleId: string) =>
-    bottleStats ? (bottleStats[bottleId] ?? { wears: 0, sprays: 0 }) : undefined;
+  const handleSort = (option: SortOption) => {
+    const next = getNextSortState(sortBy, sortDir, option);
+    setSortBy(next.sortBy);
+    setSortDir(next.sortDir);
+  };
 
   const filteredBottles = useMemo(() => {
     if (!bottles) return [];
-    if (!search.trim()) return bottles;
-    const q = search.toLowerCase();
-    return bottles.filter(
-      (b) =>
-        b.name.toLowerCase().includes(q) ||
-        b.brand?.toLowerCase().includes(q) ||
-        b.tags?.some((t) => t.toLowerCase().includes(q))
-    );
-  }, [bottles, search]);
+    return filterAndSortBottles({
+      bottles,
+      bottleStats,
+      search,
+      sortBy,
+      sortDir,
+    });
+  }, [bottles, search, sortBy, sortDir, bottleStats]);
 
   if (bottles === undefined) {
     return (
@@ -116,20 +140,60 @@ export function BottleCollection({
         </Button>
       </div>
 
-      {/* Count */}
-      <div className="pt-2 pb-2 animate-fade-up stagger-2">
+      {/* Count + Sort */}
+      <div className="flex items-center justify-between pt-2 pb-2 animate-fade-up stagger-2">
         <p className="text-xs text-text-secondary">
           {filteredBottles.length} fragrance
           {filteredBottles.length !== 1 ? "s" : ""}
           {search && ` matching "${search}"`}
         </p>
+
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 gap-1.5 text-xs text-text-secondary hover:text-text px-2"
+              aria-label="Sort fragrances"
+            >
+              <ArrowUpDown className="h-3 w-3" />
+              {SORT_LABELS[sortBy]}
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="min-w-[160px]">
+            {(Object.keys(SORT_LABELS) as SortOption[]).map((option) => {
+              const isActive = sortBy === option;
+              return (
+                <DropdownMenuItem
+                  key={option}
+                  onSelect={(e) => {
+                    e.preventDefault();
+                    handleSort(option);
+                  }}
+                  className="flex items-center justify-between gap-3"
+                >
+                  <span className="flex items-center gap-2">
+                    {isActive && <Check className="h-3 w-3 text-accent" />}
+                    {!isActive && <span className="w-3" />}
+                    {SORT_LABELS[option]}
+                  </span>
+                  {isActive && (
+                    sortDir === "asc"
+                      ? <ArrowUp className="h-3 w-3 text-text-secondary" />
+                      : <ArrowDown className="h-3 w-3 text-text-secondary" />
+                  )}
+                </DropdownMenuItem>
+              );
+            })}
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       {/* Grid */}
       <div className="flex-1 overflow-y-auto scrollbar-fade pb-5 pt-4 -mr-6 pr-6 lg:-mr-7 lg:pr-7">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {filteredBottles.map((bottle, i) => {
-            const stats = getStats(bottle._id);
+            const stats = getBottleStats(bottleStats, bottle._id);
             return (
               <BottleCard
                 key={bottle._id}
@@ -138,6 +202,7 @@ export function BottleCollection({
                 onClick={() => onSelectBottle(bottle._id)}
                 totalSprays={stats?.sprays}
                 totalWears={stats?.wears}
+                avgRating={stats?.avgRating ?? null}
                 index={i}
               />
             );
