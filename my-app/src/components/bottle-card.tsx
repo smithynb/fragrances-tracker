@@ -16,6 +16,7 @@ interface BottleCardProps {
   totalWears?: number;
   avgRating?: number | null;
   index: number;
+  className?: string;
 }
 
 export function BottleCard({
@@ -26,6 +27,7 @@ export function BottleCard({
   totalWears,
   avgRating,
   index,
+  className: extraClassName,
 }: BottleCardProps) {
   const staggerClass = `stagger-${Math.min(index + 1, 8)}`;
   const tags = bottle.tags ?? EMPTY_TAGS;
@@ -76,11 +78,12 @@ export function BottleCard({
       className={cn(
         "group w-full h-full flex flex-col text-left rounded-xl border px-6 py-5 transition-all duration-200 cursor-pointer",
         "hover:shadow-md hover:-translate-y-0.5",
-        "animate-fade-up opacity-0",
+        "animate-fade-up",
         staggerClass,
         isSelected
           ? "border-accent bg-accent-subtle/60 shadow-sm"
-          : "border-border bg-surface hover:border-border-hover"
+          : "border-border bg-surface hover:border-border-hover",
+        extraClassName,
       )}
     >
       <div className="flex items-start justify-between gap-3">

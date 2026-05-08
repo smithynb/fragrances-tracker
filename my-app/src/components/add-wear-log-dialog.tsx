@@ -34,12 +34,15 @@ interface AddWearLogDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   bottleId: Id<"bottles">;
+  /** Called after a wear log is successfully created. */
+  onSuccess?: () => void;
 }
 
 export function AddWearLogDialog({
   open,
   onOpenChange,
   bottleId,
+  onSuccess,
 }: AddWearLogDialogProps) {
   const addWearLog = useMutation(api.wearLogs.addWearLog);
 
@@ -140,6 +143,7 @@ export function AddWearLogDialog({
         comment: comment.trim() || undefined,
       });
       toast.success("Wear logged");
+      onSuccess?.();
       onOpenChange(false);
     } catch (err) {
       if (process.env.NODE_ENV !== "production") {
