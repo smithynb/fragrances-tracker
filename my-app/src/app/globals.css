@@ -205,15 +205,15 @@ body {
 }
 
 .animate-fade-up {
-  animation: fadeUp 0.5s var(--ease-smooth) both;
+  animation: fadeUp 0.5s var(--ease-smooth) backwards;
 }
 
 .animate-fade-in {
-  animation: fadeIn 0.4s var(--ease-smooth) both;
+  animation: fadeIn 0.4s var(--ease-smooth) backwards;
 }
 
 .animate-scale-in {
-  animation: scaleIn 0.35s var(--ease-smooth) both;
+  animation: scaleIn 0.35s var(--ease-smooth) backwards;
 }
 
 .animate-shimmer {
@@ -273,6 +273,37 @@ body {
   to {
     opacity: 1;
     transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+/* ── Onboarding coach-mark pulse ─────────────────────────────────────────── */
+@keyframes coachPulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 var(--accent);
+  }
+
+  50% {
+    box-shadow: 0 0 0 6px transparent;
+  }
+}
+
+.coach-pulse {
+  animation: coachPulse 2s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .coach-pulse {
+    animation: none;
+  }
+
+  .animate-fade-up,
+  .animate-fade-in,
+  .animate-scale-in,
+  .animate-shimmer {
+    animation: none;
+    opacity: 1;
+    transform: none;
   }
 }
 

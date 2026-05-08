@@ -6,6 +6,7 @@ import { Id } from "../../convex/_generated/dataModel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { CoachMark } from "@/components/coach-mark";
 import { cn } from "@/lib/utils";
 import { WearLogList } from "@/components/wear-log-list";
 import {
@@ -20,12 +21,15 @@ import {
 import { useState } from "react";
 import { toast } from "sonner";
 import { getApiErrorMessage } from "@/lib/utils";
+import { type OnboardingStep } from "@/lib/use-onboarding";
 
 interface BottleDetailProps {
   bottleId: Id<"bottles">;
   onEdit: () => void;
   onAddWearLog: () => void;
   onClose: () => void;
+  onboardingStep?: OnboardingStep;
+  onDismissOnboarding?: () => void;
 }
 
 export function BottleDetail({
@@ -33,6 +37,8 @@ export function BottleDetail({
   onEdit,
   onAddWearLog,
   onClose,
+  onboardingStep,
+  onDismissOnboarding,
 }: BottleDetailProps) {
   const bottle = useQuery(api.bottles.getBottle, { bottleId });
   const logs = useQuery(api.wearLogs.listWearLogsByBottle, { bottleId });
@@ -199,10 +205,31 @@ export function BottleDetail({
         <h3 className="font-display text-lg font-semibold text-text">
           Wear History
         </h3>
-        <Button onClick={onAddWearLog} size="sm" variant="outline" className="gap-1.5 bg-white/10 hover:bg-white/20 transition-colors">
-          <Plus className="h-3.5 w-3.5" />
-          Log Wear
-        </Button>
+        <div className={cn("relative", onboardingStep === "log-wear" && "z-50")}>
+          <Button
+            onClick={onAddWearLog}
+            size="sm"
+            variant="outline"
+            className={cn(
+              "gap-1.5 bg-white/10 hover:bg-white/20 transition-colors",
+              onboardingStep === "log-wear" && "coach-pulse",
+            )}
+          >
+            <Plus className="h-3.5 w-3.5" />
+            Log Wear
+          </Button>
+          {onboardingStep === "log-wear" && onDismissOnboarding && (
+            <CoachMark
+              step={3}
+              totalSteps={3}
+              title="Log your first wear!"
+              description="Record when you wore this fragrance — sprays, context, and a rating."
+              onDismiss={onDismissOnboarding}
+              position="bottom"
+              align="end"
+            />
+          )}
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto scrollbar-fade px-7 pb-7">

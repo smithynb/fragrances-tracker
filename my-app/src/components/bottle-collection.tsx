@@ -4,6 +4,8 @@ import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { Id } from "../../convex/_generated/dataModel";
 import { BottleCard } from "@/components/bottle-card";
+import { CoachMark } from "@/components/coach-mark";
+import { cn } from "@/lib/utils";
 import {
   filterAndSortBottles,
   getBottleStats,
@@ -19,8 +21,9 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
-import { Plus, Wine, ArrowUpDown, ArrowUp, ArrowDown, Check } from "lucide-react";
-import { useState, useMemo } from "react";
+import { type OnboardingStep } from "@/lib/use-onboarding";
+import { Plus, Wine, ArrowUp, ArrowDown, Check } from "lucide-react";
+import { useState, useMemo, useEffect, useRef } from "react";
 
 const SORT_LABELS: Record<SortOption, string> = {
   created: "Date Added",
@@ -33,18 +36,50 @@ interface BottleCollectionProps {
   selectedBottleId: Id<"bottles"> | null;
   onSelectBottle: (id: Id<"bottles">) => void;
   onAddBottle: () => void;
+  onboardingStep?: OnboardingStep;
+  onAdvanceOnboarding?: () => void;
+  onDismissOnboarding?: () => void;
 }
 
 export function BottleCollection({
   selectedBottleId,
   onSelectBottle,
   onAddBottle,
+  onboardingStep,
+  onAdvanceOnboarding,
+  onDismissOnboarding,
 }: BottleCollectionProps) {
   const bottles = useQuery(api.bottles.listBottles);
   const bottleStats = useQuery(api.wearLogs.listBottleStats);
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState<SortOption>("created");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
+
+  // Track whether we've already auto-advanced from welcome → select-bottle.
+  // This prevents the advance from firing on every re-render.
+  const hasAdvancedWelcome = useRef(false);
+
+  // Auto-advance: when bottles appear during the 'welcome' step,
+  // transition to 'select-bottle'.
+  useEffect(() => {
+    if (
+      onboardingStep === "welcome" &&
+      bottles &&
+      bottles.length > 0 &&
+      !hasAdvancedWelcome.current
+    ) {
+      hasAdvancedWelcome.current = true;
+      onAdvanceOnboarding?.();
+    }
+  }, [onboardingStep, bottles, onAdvanceOnboarding]);
+
+  // Reset when the tour leaves the welcome step so the ref is fresh
+  // if onboarding is re-triggered (e.g. via NEXT_PUBLIC_FORCE_ONBOARDING).
+  useEffect(() => {
+    if (onboardingStep !== "welcome") {
+      hasAdvancedWelcome.current = false;
+    }
+  }, [onboardingStep]);
 
   const handleSort = (option: SortOption) => {
     const next = getNextSortState(sortBy, sortDir, option);
@@ -80,7 +115,7 @@ export function BottleCollection({
         </div>
 
         {/* Grid Skeleton */}
-        <div className="flex-1 overflow-y-auto scrollbar-fade pb-5 pt-4 -mr-6 pr-6 lg:-mr-7 lg:pr-7">
+        <div className="flex-1 overflow-y-auto scrollbar-fade pb-5 pt-4 -ml-2 pl-2 -mr-6 pr-6 lg:-mr-7 lg:pr-7">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {Array.from({ length: 6 }).map((_, i) => (
               <div
@@ -96,22 +131,39 @@ export function BottleCollection({
   }
 
   if (bottles.length === 0) {
+    const isWelcome = onboardingStep === "welcome";
     return (
       <div className="flex h-full flex-col items-center justify-center py-16 animate-fade-up">
         <div className="w-16 h-16 rounded-2xl bg-surface-alt flex items-center justify-center mb-4">
           <Wine className="h-8 w-8 text-text-secondary/50" />
         </div>
         <h3 className="font-display text-xl font-semibold text-text mb-1">
-          Your collection awaits
+          {isWelcome ? "Welcome! Let\u2019s get started" : "Your collection awaits"}
         </h3>
         <p className="text-sm text-text-secondary text-center max-w-[240px] mb-6">
-          Add your first fragrance to start tracking your collection and wear
-          history.
+          {isWelcome
+            ? "Add your first fragrance to begin your tracking journey."
+            : "Add your first fragrance to start tracking your collection and wear history."}
         </p>
-        <Button onClick={onAddBottle} className="gap-2">
-          <Plus className="h-4 w-4" />
-          Add Fragrance
-        </Button>
+        <div className={cn("relative", isWelcome && "z-50")}>
+          <Button
+            onClick={onAddBottle}
+            className={cn("gap-2", isWelcome && "coach-pulse")}
+          >
+            <Plus className="h-4 w-4" />
+            Add Fragrance
+          </Button>
+          {isWelcome && onDismissOnboarding && (
+            <CoachMark
+              step={1}
+              totalSteps={3}
+              title="Add your first fragrance"
+              description="Start by adding a fragrance from your collection."
+              onDismiss={onDismissOnboarding}
+              position="bottom"
+            />
+          )}
+        </div>
       </div>
     );
   }
@@ -156,11 +208,11 @@ export function BottleCollection({
               className="h-7 gap-1.5 text-xs text-text-secondary hover:text-text px-2"
               aria-label="Sort fragrances"
             >
-              <ArrowUpDown className="h-3 w-3" />
+              {sortDir === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />}
               {SORT_LABELS[sortBy]}
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="min-w-[160px]">
+          <DropdownMenuContent align="start" className="min-w-[160px]">
             {(Object.keys(SORT_LABELS) as SortOption[]).map((option) => {
               const isActive = sortBy === option;
               return (
@@ -190,21 +242,34 @@ export function BottleCollection({
       </div>
 
       {/* Grid */}
-      <div className="flex-1 overflow-y-auto scrollbar-fade pb-5 pt-4 -mr-6 pr-6 lg:-mr-7 lg:pr-7">
+      <div className="flex-1 overflow-y-auto scrollbar-fade pb-5 pt-4 -ml-2 pl-2 -mr-6 pr-6 lg:-mr-7 lg:pr-7">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {filteredBottles.map((bottle, i) => {
             const stats = getBottleStats(bottleStats, bottle._id);
+            const showCoachMark = i === 0 && onboardingStep === "select-bottle";
             return (
-              <BottleCard
-                key={bottle._id}
-                bottle={bottle}
-                isSelected={selectedBottleId === bottle._id}
-                onClick={() => onSelectBottle(bottle._id)}
-                totalSprays={stats?.sprays}
-                totalWears={stats?.wears}
-                avgRating={stats?.avgRating ?? null}
-                index={i}
-              />
+              <div key={bottle._id} className={cn("relative", showCoachMark && "z-50")}>
+                <BottleCard
+                  bottle={bottle}
+                  isSelected={selectedBottleId === bottle._id}
+                  onClick={() => onSelectBottle(bottle._id)}
+                  totalSprays={stats?.sprays}
+                  totalWears={stats?.wears}
+                  avgRating={stats?.avgRating ?? null}
+                  index={i}
+                  className={showCoachMark ? "coach-pulse" : undefined}
+                />
+                {showCoachMark && onDismissOnboarding && (
+                  <CoachMark
+                    step={2}
+                    totalSteps={3}
+                    title="Open your fragrance"
+                    description="Tap to see details and start tracking wears."
+                    onDismiss={onDismissOnboarding}
+                    position="bottom"
+                  />
+                )}
+              </div>
             );
           })}
         </div>

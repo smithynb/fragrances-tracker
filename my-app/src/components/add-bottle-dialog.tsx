@@ -88,9 +88,16 @@ export function AddBottleDialog({
   };
 
   const handleAddTag = () => {
-    const trimmed = tagInput.trim();
-    if (trimmed && !tags.some((t) => t.toLowerCase() === trimmed.toLowerCase())) {
-      setTags([...tags, trimmed]);
+    const newTags = tagInput
+      .split(",")
+      .map((t) => t.trim())
+      .filter(
+        (t) =>
+          t.length > 0 &&
+          !tags.some((existing) => existing.toLowerCase() === t.toLowerCase()),
+      );
+    if (newTags.length > 0) {
+      setTags([...tags, ...newTags]);
     }
     setTagInput("");
   };
@@ -268,7 +275,7 @@ export function AddBottleDialog({
                 value={tagInput}
                 onChange={(e) => setTagInput(e.target.value)}
                 onKeyDown={handleTagKeyDown}
-                placeholder="Type and press Enter"
+                placeholder="fresh, citrus, woody..."
                 className="flex-1"
               />
               <Button
