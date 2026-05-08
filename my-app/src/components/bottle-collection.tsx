@@ -243,7 +243,7 @@ export function BottleCollection({
 
       {/* Grid */}
       <div className="flex-1 overflow-y-auto scrollbar-fade pb-5 pt-4 -ml-2 pl-2 -mr-6 pr-6 lg:-mr-7 lg:pr-7">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 reduced-motion-fade-in">
           {filteredBottles.map((bottle, i) => {
             const stats = getBottleStats(bottleStats, bottle._id);
             const showCoachMark = i === 0 && onboardingStep === "select-bottle";

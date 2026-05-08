@@ -293,17 +293,32 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .coach-pulse {
-    animation: none;
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 
-  .animate-fade-up,
-  .animate-fade-in,
-  .animate-scale-in,
-  .animate-shimmer {
-    animation: none;
-    opacity: 1;
-    transform: none;
+  /* Zero out stagger delays so the whole group fades in together */
+  .stagger-1, .stagger-2, .stagger-3, .stagger-4,
+  .stagger-5, .stagger-6, .stagger-7, .stagger-8 {
+    animation-delay: 0s !important;
+  }
+
+  /* Gentle single fade-in for card grids (no movement, just opacity) */
+  .reduced-motion-fade-in {
+    animation: fadeIn 0.2s var(--ease-smooth) backwards !important;
+  }
+
+  /* Gentle opacity-only fade for dialogs (no scale/translate) — open only */
+  [data-state="open"].reduced-motion-overlay {
+    animation: overlayShow 0.2s var(--ease-smooth) !important;
+  }
+  [data-state="open"].reduced-motion-content {
+    animation: fadeIn 0.2s var(--ease-smooth) !important;
   }
 }
 
