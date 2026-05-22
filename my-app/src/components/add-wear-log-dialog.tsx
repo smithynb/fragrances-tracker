@@ -151,7 +151,14 @@ export function AddWearLogDialog({
       }
       const message = getApiErrorMessage(err);
       toast.error(message);
-      setFormError(message);
+      if (
+        err instanceof Error &&
+        err.message.includes("wornAt cannot be in the future")
+      ) {
+        setErrors({ date: message });
+      } else {
+        setFormError(message);
+      }
     } finally {
       setSubmitting(false);
     }
