@@ -31,5 +31,13 @@ export function getApiErrorMessage(err: unknown): string {
     return "Network error. Please check your connection and try again.";
   }
 
+  // Future-date rejection from assertValidWornAt on the server
+  if (
+    err instanceof Error &&
+    err.message.includes("wornAt cannot be in the future")
+  ) {
+    return "The date and time can't be in the future.";
+  }
+
   return "Something went wrong. Please try again.";
 }
