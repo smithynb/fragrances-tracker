@@ -184,3 +184,25 @@ export const deleteBottle = mutation({
     await ctx.db.delete(args.bottleId);
   },
 });
+
+export const toggleFavorite = mutation({
+  args: { bottleId: v.id("bottles") },
+  handler: async (ctx, args) => {
+    const userId = await getUserId(ctx);
+    await rateLimiter.limit(ctx, "toggleFavorite", {
+      key: userId,
+      throws: true,
+    });
+
+    const bottle = await ctx.db.get(args.bottleId);
+    if (!bottle || bottle.userId !== userId) {
+      throw new Error("Bottle not found or access denied.");
+    }
+
+    // Intentionally do NOT touch updatedAt — favoriting is metadata, not a
+    // content edit. Keeps any future "last modified" view honest.
+    await ctx.db.patch(args.bottleId, {
+      isFavorite: !(bottle.isFavorite ?? false),
+    });
+  },
+});

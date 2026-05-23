@@ -15,6 +15,8 @@ export default defineSchema({
     tags: v.optional(v.array(v.string())),
     comments: v.optional(v.string()),
 
+    isFavorite: v.optional(v.boolean()),
+
     createdAt: v.number(),
     updatedAt: v.optional(v.number()),
   }).index("by_user", ["userId"]),

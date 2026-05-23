@@ -11,6 +11,7 @@
  * │ addBottle             │ token bucket│ 10/min, burst of 5                   │
  * │ updateBottle          │ token bucket│ 20/min, burst of 5                   │
  * │ deleteBottle          │ token bucket│ 10/min, burst of 3                   │
+ * │ toggleFavorite        │ token bucket│ 20/min, burst of 10                  │
  * │ addWearLog            │ token bucket│ 20/min, burst of 5                   │
  * │ updateWearLog         │ token bucket│ 20/min, burst of 5                   │
  * │ deleteWearLog         │ token bucket│ 20/min, burst of 5                   │
@@ -58,6 +59,12 @@ export const rateLimiter = new RateLimiter(components.rateLimiter, {
     rate: 10,
     period: MINUTE,
     capacity: 3,
+  },
+  toggleFavorite: {
+    kind: "token bucket",
+    rate: 20,
+    period: MINUTE,
+    capacity: 10,
   },
 
   // ── Wear-log mutations ────────────────────────────────────────────────
