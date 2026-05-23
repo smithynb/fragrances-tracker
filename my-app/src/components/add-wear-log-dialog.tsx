@@ -30,6 +30,16 @@ import { MAX_SPRAYS, CONTEXT_OPTIONS } from "@/lib/constants";
 
 const NO_CONTEXT_VALUE = "__none__";
 
+function getWornAtTimestamp(date: string, time: string): number {
+  if (!date) return NaN;
+  if (time) return new Date(`${date}T${time}`).getTime();
+
+  const today = new Date().toLocaleDateString("en-CA");
+  if (date === today) return Date.now();
+
+  return new Date(`${date}T12:00`).getTime();
+}
+
 interface AddWearLogDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -70,7 +80,7 @@ export function AddWearLogDialog({
     const newErrors: Record<string, string> = {};
     if (!date) newErrors.date = "Date is required";
     if (date) {
-      const wornAt = new Date(`${date}T${time || "12:00"}`).getTime();
+      const wornAt = getWornAtTimestamp(date, time);
       if (!isNaN(wornAt) && wornAt > Date.now()) {
         newErrors.wornAt = "Time cannot be in the future";
       }
@@ -136,7 +146,7 @@ export function AddWearLogDialog({
     setFormError(null);
     if (!validate()) return;
 
-    const wornAt = new Date(`${date}T${time || "12:00"}`).getTime();
+    const wornAt = getWornAtTimestamp(date, time);
     if (isNaN(wornAt)) return;
 
     setSubmitting(true);
