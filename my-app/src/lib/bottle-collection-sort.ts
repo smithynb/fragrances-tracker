@@ -1,6 +1,6 @@
 import type { Doc } from "../../convex/_generated/dataModel";
 
-export type SortOption = "created" | "name" | "wears" | "rating" | "favorites";
+export type SortOption = "created" | "name" | "wears" | "rating";
 export type SortDir = "asc" | "desc";
 
 export type BottleCollectionItem = Doc<"bottles">;
@@ -73,17 +73,22 @@ export function filterAndSortBottles({
   search,
   sortBy,
   sortDir,
+  pinFavorites = false,
 }: {
   bottles: BottleCollectionItem[];
   bottleStats: BottleStatsMap | undefined;
   search: string;
   sortBy: SortOption;
   sortDir: SortDir;
+  pinFavorites?: boolean;
 }): BottleCollectionItem[] {
   const filtered = bottles.filter((bottle) => matchesSearch(bottle, search));
   const dir = sortDir === "asc" ? 1 : -1;
 
-  return [...filtered].sort((a, b) => {
+  const baseComparator = (
+    a: BottleCollectionItem,
+    b: BottleCollectionItem,
+  ): number => {
     switch (sortBy) {
       case "name":
         return dir * compareNames(a, b) || compareCreatedDesc(a, b) || a._id.localeCompare(b._id);
@@ -100,14 +105,19 @@ export function filterAndSortBottles({
         if (bRating === null) return -1;
         return dir * (aRating - bRating) || compareFallback(a, b);
       }
-      case "favorites": {
-        const aFav = a.isFavorite ? 1 : 0;
-        const bFav = b.isFavorite ? 1 : 0;
-        return dir * (aFav - bFav) || compareFallback(a, b);
-      }
       case "created":
       default:
         return dir * (a._creationTime - b._creationTime) || compareNames(a, b) || a._id.localeCompare(b._id);
     }
+  };
+
+  const favCmp = (a: BottleCollectionItem, b: BottleCollectionItem): number =>
+    Number(b.isFavorite ?? false) - Number(a.isFavorite ?? false);
+
+  return [...filtered].sort((a, b) => {
+    if (pinFavorites) {
+      return favCmp(a, b) || baseComparator(a, b);
+    }
+    return baseComparator(a, b);
   });
 }

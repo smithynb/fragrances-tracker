@@ -308,35 +308,54 @@ describe("filterAndSortBottles", () => {
     ]);
   });
 
-  test("sorts favorites to the top (desc) and to the bottom (asc) with name fallback", () => {
-    expect(
-      names(
-        filterAndSortBottles({
-          bottles,
-          bottleStats: stats,
-          search: "",
-          sortBy: "favorites",
-          sortDir: "desc",
-        }),
-      ),
-    ).toEqual([
+  test("pinFavorites: true with sortBy name lifts favorites then sorts each group", () => {
+    const result = filterAndSortBottles({
+      bottles,
+      bottleStats: stats,
+      search: "",
+      sortBy: "name",
+      sortDir: "asc",
+      pinFavorites: true,
+    });
+    expect(names(result)).toEqual([
+      // Favorites group (b1, b3), asc by name
       "Byredo Bal d'Afrique",
       "Zoologist Bee",
+      // Non-favorites group (b2, b4), asc by name
       "Acqua di Parma",
       "Amouage Jubilation",
     ]);
+  });
 
-    expect(
-      names(
-        filterAndSortBottles({
-          bottles,
-          bottleStats: stats,
-          search: "",
-          sortBy: "favorites",
-          sortDir: "asc",
-        }),
-      ),
-    ).toEqual([
+  test("pinFavorites: true with sortBy created desc lifts favorites then sorts each group", () => {
+    const result = filterAndSortBottles({
+      bottles,
+      bottleStats: stats,
+      search: "",
+      sortBy: "created",
+      sortDir: "desc",
+      pinFavorites: true,
+    });
+    expect(names(result)).toEqual([
+      // Favorites group: b3 (200) before b1 (100) desc
+      "Byredo Bal d'Afrique",
+      "Zoologist Bee",
+      // Non-favorites group: b2 (300) before b4 (200) desc
+      "Acqua di Parma",
+      "Amouage Jubilation",
+    ]);
+  });
+
+  test("pinFavorites: false applies pure sort and does not lift favorites", () => {
+    const result = filterAndSortBottles({
+      bottles,
+      bottleStats: stats,
+      search: "",
+      sortBy: "name",
+      sortDir: "asc",
+      pinFavorites: false,
+    });
+    expect(names(result)).toEqual([
       "Acqua di Parma",
       "Amouage Jubilation",
       "Byredo Bal d'Afrique",
@@ -344,19 +363,25 @@ describe("filterAndSortBottles", () => {
     ]);
   });
 
-  test("treats undefined isFavorite as false", () => {
-    // b2 and b4 have no isFavorite field at all; b1 and b3 are favorites.
-    const result = filterAndSortBottles({
-      bottles,
+  test("pinFavorites: true with no favorites is identical to a pure sort", () => {
+    const noFavs = bottles.map((b) => ({ ...b, isFavorite: false }));
+    const pinned = filterAndSortBottles({
+      bottles: noFavs,
       bottleStats: stats,
       search: "",
-      sortBy: "favorites",
-      sortDir: "desc",
+      sortBy: "name",
+      sortDir: "asc",
+      pinFavorites: true,
     });
-    expect(names(result).slice(0, 2)).toEqual([
-      "Byredo Bal d'Afrique",
-      "Zoologist Bee",
-    ]);
+    const pure = filterAndSortBottles({
+      bottles: noFavs,
+      bottleStats: stats,
+      search: "",
+      sortBy: "name",
+      sortDir: "asc",
+      pinFavorites: false,
+    });
+    expect(names(pinned)).toEqual(names(pure));
   });
 
   test("does not mutate the original bottle array", () => {

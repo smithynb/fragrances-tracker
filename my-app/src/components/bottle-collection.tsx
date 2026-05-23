@@ -21,6 +21,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { type OnboardingStep } from "@/lib/use-onboarding";
 import { Plus, Wine, ArrowUp, ArrowDown, Check } from "lucide-react";
@@ -28,7 +29,6 @@ import { useState, useMemo, useEffect, useRef } from "react";
 
 const SORT_LABELS: Record<SortOption, string> = {
   created: "Date Added",
-  favorites: "Favorites",
   name: "Name",
   wears: "Wears",
   rating: "Rating",
@@ -56,6 +56,7 @@ export function BottleCollection({
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState<SortOption>("created");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
+  const [pinFavorites, setPinFavorites] = useState(true);
 
   // Track whether we've already auto-advanced from welcome → select-bottle.
   // This prevents the advance from firing on every re-render.
@@ -97,8 +98,9 @@ export function BottleCollection({
       search,
       sortBy,
       sortDir,
+      pinFavorites,
     });
-  }, [bottles, search, sortBy, sortDir, bottleStats]);
+  }, [bottles, search, sortBy, sortDir, bottleStats, pinFavorites]);
 
   if (bottles === undefined) {
     return (
@@ -239,6 +241,23 @@ export function BottleCollection({
                 </DropdownMenuItem>
               );
             })}
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onSelect={(e) => {
+                e.preventDefault();
+                setPinFavorites((v) => !v);
+              }}
+              className="flex items-center justify-between gap-3"
+              aria-checked={pinFavorites}
+              role="menuitemcheckbox"
+            >
+              <span className="flex items-center gap-2">
+                {pinFavorites
+                  ? <Check className="h-3 w-3 text-accent" />
+                  : <span className="w-3" />}
+                Pin favorites to top
+              </span>
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
