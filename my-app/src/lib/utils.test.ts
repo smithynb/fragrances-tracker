@@ -1,20 +1,25 @@
 import { describe, test, expect } from "vitest";
-import { getApiErrorMessage } from "./utils";
+import { getApiErrorMessage, isFutureWornAtError } from "./utils";
 
 describe("getApiErrorMessage", () => {
   test("returns a user-friendly message for future-date server errors", () => {
     // Convex wraps the message — "Uncaught Error: ..." is the realistic shape.
     const err = new Error("Uncaught Error: wornAt cannot be in the future.");
     expect(getApiErrorMessage(err)).toBe(
-      "The date and time can't be in the future."
+      "Time cannot be in the future"
     );
   });
 
   test("exact server message also matches", () => {
     const err = new Error("wornAt cannot be in the future.");
     expect(getApiErrorMessage(err)).toBe(
-      "The date and time can't be in the future."
+      "Time cannot be in the future"
     );
+  });
+
+  test("identifies future-date server errors", () => {
+    const err = new Error("Uncaught Error: wornAt cannot be in the future.");
+    expect(isFutureWornAtError(err)).toBe(true);
   });
 
   test("returns rate-limit message for rate-limited errors", () => {

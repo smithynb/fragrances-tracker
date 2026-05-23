@@ -25,7 +25,7 @@ import {
 import { Kbd, KbdGroup } from "@/components/ui/kbd";
 import { useState, useEffect, useRef } from "react";
 import { toast } from "sonner";
-import { getApiErrorMessage } from "@/lib/utils";
+import { getApiErrorMessage, isFutureWornAtError } from "@/lib/utils";
 import { MAX_SPRAYS, CONTEXT_OPTIONS } from "@/lib/constants";
 
 const NO_CONTEXT_VALUE = "__none__";
@@ -69,6 +69,12 @@ export function AddWearLogDialog({
   const validate = (): boolean => {
     const newErrors: Record<string, string> = {};
     if (!date) newErrors.date = "Date is required";
+    if (date) {
+      const wornAt = new Date(`${date}T${time || "12:00"}`).getTime();
+      if (!isNaN(wornAt) && wornAt > Date.now()) {
+        newErrors.wornAt = "Time cannot be in the future";
+      }
+    }
     const spraysNum = Number(sprays);
     if (!sprays || isNaN(spraysNum) || spraysNum < 1 || spraysNum > MAX_SPRAYS) {
       newErrors.sprays = `Must be between 1 and ${MAX_SPRAYS}`;
@@ -127,6 +133,7 @@ export function AddWearLogDialog({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setFormError(null);
     if (!validate()) return;
 
     const wornAt = new Date(`${date}T${time || "12:00"}`).getTime();
@@ -150,13 +157,10 @@ export function AddWearLogDialog({
         console.error("Failed to log wear:", err);
       }
       const message = getApiErrorMessage(err);
-      toast.error(message);
-      if (
-        err instanceof Error &&
-        err.message.includes("wornAt cannot be in the future")
-      ) {
-        setErrors({ date: message });
+      if (isFutureWornAtError(err)) {
+        setErrors({ wornAt: message });
       } else {
+        toast.error(message);
         setFormError(message);
       }
     } finally {
@@ -178,7 +182,7 @@ export function AddWearLogDialog({
           {/* Date + Time side by side */}
           <div className="grid grid-cols-2 gap-4">
             <div className="relative space-y-2">
-              <Label htmlFor="date" className={errors.date ? "text-danger" : ""}>
+              <Label htmlFor="date" className={errors.date || errors.wornAt ? "text-danger" : ""}>
                 Date *
               </Label>
               <Input
@@ -188,31 +192,51 @@ export function AddWearLogDialog({
                 onChange={(e) => {
                   setDate(e.target.value);
                   clearError("date");
+                  clearError("wornAt");
                 }}
                 required
                 className={
-                  errors.date
+                  errors.date || errors.wornAt
                     ? "border-danger focus:border-danger focus:ring-danger"
                     : ""
                 }
-                aria-invalid={!!errors.date}
-                aria-describedby="date-error"
+                aria-invalid={!!(errors.date || errors.wornAt)}
+                aria-describedby={errors.wornAt ? "worn-at-error" : "date-error"}
               />
               <p
                 id="date-error"
                 role="alert"
-                className={`absolute -bottom-3 left-0 text-xs text-danger transition-opacity ${errors.date ? "opacity-100" : "opacity-0 pointer-events-none"}`}
+                className={`absolute -bottom-3 left-0 text-xs text-danger transition-opacity ${errors.date && !errors.wornAt ? "opacity-100" : "opacity-0 pointer-events-none"}`}
               >
                 {errors.date ?? "\u00A0"}
               </p>
+              <p
+                id="worn-at-error"
+                role="alert"
+                className={`absolute -bottom-3 left-0 whitespace-nowrap text-xs text-danger transition-opacity ${errors.wornAt ? "opacity-100" : "opacity-0 pointer-events-none"}`}
+              >
+                {errors.wornAt ?? "\u00A0"}
+              </p>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="time">Time</Label>
+            <div className="relative space-y-2">
+              <Label htmlFor="time" className={errors.wornAt ? "text-danger" : ""}>
+                Time
+              </Label>
               <Input
                 id="time"
                 type="time"
                 value={time}
-                onChange={(e) => setTime(e.target.value)}
+                onChange={(e) => {
+                  setTime(e.target.value);
+                  clearError("wornAt");
+                }}
+                className={
+                  errors.wornAt
+                    ? "border-danger focus:border-danger focus:ring-danger"
+                    : ""
+                }
+                aria-invalid={!!errors.wornAt}
+                aria-describedby="worn-at-error"
               />
             </div>
           </div>
