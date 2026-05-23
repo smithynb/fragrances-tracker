@@ -35,14 +35,17 @@ export function BottleCard({
   // Track whether the entrance animation has played so DOM reorders
   // (from favoriting / pin-favorites) never replay it.
   const hasAnimated = useRef(false);
+  // Dummy state toggle – the sole purpose is to force a re-render after
+  // flipping `hasAnimated` so the ref read in the JSX below picks it up.
   const [, rerender] = useState(0);
 
-  const handleAnimationEnd = useCallback(() => {
-    if (!hasAnimated.current) {
+  const handleAnimationEnd = useCallback((e: React.AnimationEvent) => {
+    if (e.animationName === "fadeUp" && !hasAnimated.current) {
       hasAnimated.current = true;
       rerender((n) => n + 1);
     }
   }, []);
+
   const sizerRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [visibleCount, setVisibleCount] = useState(tags.length);
