@@ -265,7 +265,7 @@ export function BottleCollection({
                   bottleId={bottle._id}
                   isFavorite={bottle.isFavorite ?? false}
                   size="card"
-                  className="absolute top-3 right-3 z-10 bg-surface/80 backdrop-blur-sm"
+                  className="absolute -top-2 -right-2 z-10 bg-surface/90 shadow-sm backdrop-blur-sm"
                 />
                 {showCoachMark && onDismissOnboarding && (
                   <CoachMark
