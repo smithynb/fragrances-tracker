@@ -250,7 +250,7 @@ export function BottleCollection({
             const stats = getBottleStats(bottleStats, bottle._id);
             const showCoachMark = i === 0 && onboardingStep === "select-bottle";
             return (
-              <div key={bottle._id} className={cn("relative group", showCoachMark && "z-50")}>
+              <div key={bottle._id} className={cn("relative group transition-transform duration-200 ease-smooth hover:-translate-y-0.5", showCoachMark && "z-50")}>
                 <BottleCard
                   bottle={bottle}
                   isSelected={selectedBottleId === bottle._id}
@@ -265,7 +265,7 @@ export function BottleCollection({
                   bottleId={bottle._id}
                   isFavorite={bottle.isFavorite ?? false}
                   size="card"
-                  className="absolute -top-2 -right-2 z-10 bg-surface/90 shadow-sm backdrop-blur-sm"
+                  className="absolute -top-2 -right-2 z-10 border border-white/20 bg-background/90 shadow-[0_6px_18px_rgba(0,0,0,0.22)] backdrop-blur-md hover:cursor-pointer"
                 />
                 {showCoachMark && onDismissOnboarding && (
                   <CoachMark

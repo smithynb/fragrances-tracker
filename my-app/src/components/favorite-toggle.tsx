@@ -95,12 +95,13 @@ export function FavoriteToggle({
       aria-label={isFavorite ? "Remove from favorites" : "Add to favorites"}
       title={isFavorite ? "Remove from favorites" : "Add to favorites"}
       className={cn(
-        "group/heart relative flex items-center justify-center rounded-full",
-        "transition-opacity focus-visible:outline-none focus-visible:ring-2",
+        "group/heart relative flex cursor-pointer items-center justify-center rounded-full",
+        "transition-all duration-200 ease-smooth hover:scale-110 focus-visible:outline-none focus-visible:ring-2",
         "focus-visible:ring-accent",
         dim,
         idleHide,
         className,
+        "hover:bg-pink-500/10",
       )}
     >
       {/* Filled heart: shown when favorited, fades out on hover of *this*
@@ -111,7 +112,7 @@ export function FavoriteToggle({
           icon,
           "absolute transition-opacity",
           isFavorite
-            ? "fill-pink-500 text-pink-500 opacity-100 group-hover/heart:opacity-0"
+            ? "fill-pink-500 text-pink-500 opacity-100"
             : "opacity-0",
         )}
         aria-hidden="true"
@@ -123,7 +124,7 @@ export function FavoriteToggle({
           icon,
           "absolute transition-opacity",
           isFavorite
-            ? "text-pink-500 opacity-0 group-hover/heart:opacity-100"
+            ? "text-pink-500 opacity-0"
             : "text-text-secondary opacity-100",
         )}
         aria-hidden="true"
