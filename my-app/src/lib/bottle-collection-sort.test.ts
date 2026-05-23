@@ -30,6 +30,7 @@ const bottles: BottleCollectionItem[] = [
   bottle("b1", "Zoologist Bee", 100, {
     brand: "Zoologist",
     tags: ["honey", "amber"],
+    isFavorite: true,
   }),
   bottle("b2", "Acqua di Parma", 300, {
     brand: "Parma",
@@ -38,6 +39,7 @@ const bottles: BottleCollectionItem[] = [
   bottle("b3", "Byredo Bal d'Afrique", 200, {
     brand: "Byredo",
     tags: ["vetiver"],
+    isFavorite: true,
   }),
   bottle("b4", "Amouage Jubilation", 200, {
     brand: "Amouage",
@@ -302,6 +304,57 @@ describe("filterAndSortBottles", () => {
 
     expect(names(result)).toEqual([
       "Amouage Jubilation",
+      "Zoologist Bee",
+    ]);
+  });
+
+  test("sorts favorites to the top (desc) and to the bottom (asc) with name fallback", () => {
+    expect(
+      names(
+        filterAndSortBottles({
+          bottles,
+          bottleStats: stats,
+          search: "",
+          sortBy: "favorites",
+          sortDir: "desc",
+        }),
+      ),
+    ).toEqual([
+      "Byredo Bal d'Afrique",
+      "Zoologist Bee",
+      "Acqua di Parma",
+      "Amouage Jubilation",
+    ]);
+
+    expect(
+      names(
+        filterAndSortBottles({
+          bottles,
+          bottleStats: stats,
+          search: "",
+          sortBy: "favorites",
+          sortDir: "asc",
+        }),
+      ),
+    ).toEqual([
+      "Acqua di Parma",
+      "Amouage Jubilation",
+      "Byredo Bal d'Afrique",
+      "Zoologist Bee",
+    ]);
+  });
+
+  test("treats undefined isFavorite as false", () => {
+    // b2 and b4 have no isFavorite field at all; b1 and b3 are favorites.
+    const result = filterAndSortBottles({
+      bottles,
+      bottleStats: stats,
+      search: "",
+      sortBy: "favorites",
+      sortDir: "desc",
+    });
+    expect(names(result).slice(0, 2)).toEqual([
+      "Byredo Bal d'Afrique",
       "Zoologist Bee",
     ]);
   });

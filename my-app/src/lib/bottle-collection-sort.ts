@@ -1,6 +1,6 @@
 import type { Doc } from "../../convex/_generated/dataModel";
 
-export type SortOption = "created" | "name" | "wears" | "rating";
+export type SortOption = "created" | "name" | "wears" | "rating" | "favorites";
 export type SortDir = "asc" | "desc";
 
 export type BottleCollectionItem = Doc<"bottles">;
@@ -99,6 +99,11 @@ export function filterAndSortBottles({
         if (aRating === null) return 1;
         if (bRating === null) return -1;
         return dir * (aRating - bRating) || compareFallback(a, b);
+      }
+      case "favorites": {
+        const aFav = a.isFavorite ? 1 : 0;
+        const bFav = b.isFavorite ? 1 : 0;
+        return dir * (aFav - bFav) || compareFallback(a, b);
       }
       case "created":
       default:
