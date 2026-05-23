@@ -618,3 +618,86 @@ describe("updateBottle validation", () => {
     ).rejects.toThrowError("Comments must be at most 2000 characters.");
   });
 });
+
+// ── P1: toggleFavorite ──────────────────────────────────────────────────────
+
+describe("toggleFavorite", () => {
+  test("marks an unfavorited bottle as favorite", async () => {
+    const t = setupTest();
+    const user = await createTestUser(t);
+    const bottleId = await user.as.mutation(api.bottles.addBottle, {
+      name: "Aventus",
+    });
+
+    await user.as.mutation(api.bottles.toggleFavorite, { bottleId });
+
+    const bottle = await user.as.query(api.bottles.getBottle, { bottleId });
+    expect(bottle!.isFavorite).toBe(true);
+  });
+
+  test("toggles a favorited bottle back to unfavorited", async () => {
+    const t = setupTest();
+    const user = await createTestUser(t);
+    const bottleId = await user.as.mutation(api.bottles.addBottle, {
+      name: "Aventus",
+    });
+    await user.as.mutation(api.bottles.toggleFavorite, { bottleId });
+    await user.as.mutation(api.bottles.toggleFavorite, { bottleId });
+
+    const bottle = await user.as.query(api.bottles.getBottle, { bottleId });
+    expect(bottle!.isFavorite).toBe(false);
+  });
+
+  test("freshly added bottles default to not favorited", async () => {
+    const t = setupTest();
+    const user = await createTestUser(t);
+    const bottleId = await user.as.mutation(api.bottles.addBottle, {
+      name: "Aventus",
+    });
+
+    const bottle = await user.as.query(api.bottles.getBottle, { bottleId });
+    // undefined is treated as false in the UI; either is acceptable but we
+    // assert explicitly to guard against accidental true-by-default.
+    expect(bottle!.isFavorite ?? false).toBe(false);
+  });
+
+  test("does not modify updatedAt (favoriting is not a content edit)", async () => {
+    const t = setupTest();
+    const user = await createTestUser(t);
+    const bottleId = await user.as.mutation(api.bottles.addBottle, {
+      name: "Aventus",
+    });
+    const before = await user.as.query(api.bottles.getBottle, { bottleId });
+    expect(before!.updatedAt).toBeUndefined();
+
+    await user.as.mutation(api.bottles.toggleFavorite, { bottleId });
+
+    const after = await user.as.query(api.bottles.getBottle, { bottleId });
+    expect(after!.updatedAt).toBeUndefined();
+  });
+
+  test("throws when called unauthenticated", async () => {
+    const t = setupTest();
+    const user = await createTestUser(t);
+    const bottleId = await user.as.mutation(api.bottles.addBottle, {
+      name: "Test",
+    });
+
+    await expect(
+      t.mutation(api.bottles.toggleFavorite, { bottleId }),
+    ).rejects.toThrowError("Unauthenticated.");
+  });
+
+  test("throws when toggling another user's bottle", async () => {
+    const t = setupTest();
+    const alice = await createTestUser(t, "Alice");
+    const bob = await createTestUser(t, "Bob");
+    const bottleId = await alice.as.mutation(api.bottles.addBottle, {
+      name: "Alice Only",
+    });
+
+    await expect(
+      bob.as.mutation(api.bottles.toggleFavorite, { bottleId }),
+    ).rejects.toThrowError("Bottle not found or access denied.");
+  });
+});

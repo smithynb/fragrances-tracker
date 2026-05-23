@@ -76,13 +76,13 @@ export function BottleCard({
     <button
       onClick={onClick}
       className={cn(
-        "group w-full h-full flex flex-col text-left rounded-xl border px-6 py-5 transition-all duration-200 cursor-pointer",
-        "hover:shadow-md hover:-translate-y-0.5",
+        "group w-full h-full flex flex-col text-left rounded-xl border px-6 py-5 transition-all duration-200 ease-smooth cursor-pointer",
+        "group-hover:shadow-md",
         "animate-fade-up",
         staggerClass,
         isSelected
           ? "border-accent bg-accent-subtle/60 shadow-sm"
-          : "border-border bg-surface hover:border-border-hover",
+          : "border-border bg-surface group-hover:border-border-hover",
         extraClassName,
       )}
     >

@@ -5,6 +5,7 @@ import { api } from "../../convex/_generated/api";
 import { Id } from "../../convex/_generated/dataModel";
 import { BottleCard } from "@/components/bottle-card";
 import { CoachMark } from "@/components/coach-mark";
+import { FavoriteToggle } from "@/components/favorite-toggle";
 import { cn } from "@/lib/utils";
 import {
   filterAndSortBottles,
@@ -20,7 +21,9 @@ import {
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
+import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu";
 import { type OnboardingStep } from "@/lib/use-onboarding";
 import { Plus, Wine, ArrowUp, ArrowDown, Check } from "lucide-react";
 import { useState, useMemo, useEffect, useRef } from "react";
@@ -54,6 +57,7 @@ export function BottleCollection({
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState<SortOption>("created");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
+  const [pinFavorites, setPinFavorites] = useState(true);
 
   // Track whether we've already auto-advanced from welcome → select-bottle.
   // This prevents the advance from firing on every re-render.
@@ -95,8 +99,9 @@ export function BottleCollection({
       search,
       sortBy,
       sortDir,
+      pinFavorites,
     });
-  }, [bottles, search, sortBy, sortDir, bottleStats]);
+  }, [bottles, search, sortBy, sortDir, bottleStats, pinFavorites]);
 
   if (bottles === undefined) {
     return (
@@ -237,6 +242,24 @@ export function BottleCollection({
                 </DropdownMenuItem>
               );
             })}
+            <DropdownMenuSeparator />
+            <DropdownMenuPrimitive.CheckboxItem
+              checked={pinFavorites}
+              onCheckedChange={(checked) => setPinFavorites(!!checked)}
+              onSelect={(e) => e.preventDefault()}
+              className={cn(
+                "relative flex cursor-pointer select-none items-center rounded-lg px-2 py-1.5 text-sm outline-none transition-colors",
+                "focus:bg-surface-alt focus:text-text",
+                "data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+              )}
+            >
+              <span className="flex items-center gap-2">
+                {pinFavorites
+                  ? <Check className="h-3 w-3 text-accent" />
+                  : <span className="w-3" />}
+                Pin favorites to top
+              </span>
+            </DropdownMenuPrimitive.CheckboxItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
@@ -248,7 +271,7 @@ export function BottleCollection({
             const stats = getBottleStats(bottleStats, bottle._id);
             const showCoachMark = i === 0 && onboardingStep === "select-bottle";
             return (
-              <div key={bottle._id} className={cn("relative", showCoachMark && "z-50")}>
+              <div key={bottle._id} className={cn("relative group transition-transform duration-200 ease-smooth hover:-translate-y-0.5", showCoachMark && "z-50")}>
                 <BottleCard
                   bottle={bottle}
                   isSelected={selectedBottleId === bottle._id}
@@ -258,6 +281,12 @@ export function BottleCollection({
                   avgRating={stats?.avgRating ?? null}
                   index={i}
                   className={showCoachMark ? "coach-pulse" : undefined}
+                />
+                <FavoriteToggle
+                  bottleId={bottle._id}
+                  isFavorite={bottle.isFavorite ?? false}
+                  size="card"
+                  className="absolute -top-2 -right-2 z-10 border border-white/20 bg-background/90 shadow-[0_6px_18px_rgba(0,0,0,0.22)] backdrop-blur-md hover:cursor-pointer"
                 />
                 {showCoachMark && onDismissOnboarding && (
                   <CoachMark
