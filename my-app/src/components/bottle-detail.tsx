@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { CoachMark } from "@/components/coach-mark";
+import { FavoriteToggle } from "@/components/favorite-toggle";
 import { cn } from "@/lib/utils";
 import { WearLogList } from "@/components/wear-log-list";
 import {
@@ -114,6 +115,12 @@ export function BottleDetail({
             )}
           </div>
           <div className="flex items-center gap-2 shrink-0">
+            <FavoriteToggle
+              bottleId={bottle._id}
+              isFavorite={bottle.isFavorite ?? false}
+              size="detail"
+              className="border border-white/15 bg-white/8 hover:bg-white/15 transition-colors"
+            />
             <Button
               variant="ghost"
               size="icon"

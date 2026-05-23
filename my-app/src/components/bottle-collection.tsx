@@ -5,6 +5,7 @@ import { api } from "../../convex/_generated/api";
 import { Id } from "../../convex/_generated/dataModel";
 import { BottleCard } from "@/components/bottle-card";
 import { CoachMark } from "@/components/coach-mark";
+import { FavoriteToggle } from "@/components/favorite-toggle";
 import { cn } from "@/lib/utils";
 import {
   filterAndSortBottles,
@@ -27,6 +28,7 @@ import { useState, useMemo, useEffect, useRef } from "react";
 
 const SORT_LABELS: Record<SortOption, string> = {
   created: "Date Added",
+  favorites: "Favorites",
   name: "Name",
   wears: "Wears",
   rating: "Rating",
@@ -248,7 +250,7 @@ export function BottleCollection({
             const stats = getBottleStats(bottleStats, bottle._id);
             const showCoachMark = i === 0 && onboardingStep === "select-bottle";
             return (
-              <div key={bottle._id} className={cn("relative", showCoachMark && "z-50")}>
+              <div key={bottle._id} className={cn("relative group", showCoachMark && "z-50")}>
                 <BottleCard
                   bottle={bottle}
                   isSelected={selectedBottleId === bottle._id}
@@ -258,6 +260,12 @@ export function BottleCollection({
                   avgRating={stats?.avgRating ?? null}
                   index={i}
                   className={showCoachMark ? "coach-pulse" : undefined}
+                />
+                <FavoriteToggle
+                  bottleId={bottle._id}
+                  isFavorite={bottle.isFavorite ?? false}
+                  size="card"
+                  className="absolute top-3 right-3 z-10 bg-surface/80 backdrop-blur-sm"
                 />
                 {showCoachMark && onDismissOnboarding && (
                   <CoachMark
