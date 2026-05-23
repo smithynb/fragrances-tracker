@@ -23,6 +23,7 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
+import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu";
 import { type OnboardingStep } from "@/lib/use-onboarding";
 import { Plus, Wine, ArrowUp, ArrowDown, Check } from "lucide-react";
 import { useState, useMemo, useEffect, useRef } from "react";
@@ -242,14 +243,15 @@ export function BottleCollection({
               );
             })}
             <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onSelect={(e) => {
-                e.preventDefault();
-                setPinFavorites((v) => !v);
-              }}
-              className="flex items-center justify-between gap-3"
-              aria-checked={pinFavorites}
-              role="menuitemcheckbox"
+            <DropdownMenuPrimitive.CheckboxItem
+              checked={pinFavorites}
+              onCheckedChange={(checked) => setPinFavorites(!!checked)}
+              onSelect={(e) => e.preventDefault()}
+              className={cn(
+                "relative flex cursor-pointer select-none items-center rounded-lg px-2 py-1.5 text-sm outline-none transition-colors",
+                "focus:bg-surface-alt focus:text-text",
+                "data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+              )}
             >
               <span className="flex items-center gap-2">
                 {pinFavorites
@@ -257,7 +259,7 @@ export function BottleCollection({
                   : <span className="w-3" />}
                 Pin favorites to top
               </span>
-            </DropdownMenuItem>
+            </DropdownMenuPrimitive.CheckboxItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
