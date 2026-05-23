@@ -11,6 +11,13 @@ export function cn(...inputs: ClassValue[]) {
  * and network/offline errors; falls back to a generic message for everything
  * else.  Raw error details are only logged in non-production environments.
  */
+export function isFutureWornAtError(err: unknown): boolean {
+  return (
+    err instanceof Error &&
+    err.message.includes("wornAt cannot be in the future")
+  );
+}
+
 export function getApiErrorMessage(err: unknown): string {
   // Rate-limit errors thrown by @convex-dev/rate-limiter with throws:true
   // arrive as a ConvexError whose .data has { kind: "RateLimited", retryAfter }
@@ -29,6 +36,11 @@ export function getApiErrorMessage(err: unknown): string {
       err.message.toLowerCase().includes("network request failed"))
   ) {
     return "Network error. Please check your connection and try again.";
+  }
+
+  // Future-date rejection from assertValidWornAt on the server
+  if (isFutureWornAtError(err)) {
+    return "Time cannot be in the future";
   }
 
   return "Something went wrong. Please try again.";
