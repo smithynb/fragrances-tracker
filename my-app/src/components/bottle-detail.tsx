@@ -10,6 +10,7 @@ import { CoachMark } from "@/components/coach-mark";
 import { FavoriteToggle } from "@/components/favorite-toggle";
 import { cn } from "@/lib/utils";
 import { WearLogList } from "@/components/wear-log-list";
+import { MarkdownContent } from "@/components/markdown-content";
 import {
   Pencil,
   Trash2,
@@ -196,9 +197,11 @@ export function BottleDetail({
         {bottle.comments && (
           <div className="flex items-start gap-2.5 mt-5 p-4 rounded-lg bg-surface-alt">
             <MessageSquare className="h-4 w-4 text-text-secondary mt-0.5 shrink-0" />
-            <p className="text-sm text-text-secondary leading-relaxed">
-              {bottle.comments}
-            </p>
+            <MarkdownContent
+              content={bottle.comments}
+              collapsible
+              className="text-sm text-text-secondary"
+            />
           </div>
         )}
       </div>

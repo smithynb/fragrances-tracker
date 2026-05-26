@@ -281,6 +281,9 @@ export function EditWearLogDialog({
               placeholder="Performance comments, compliments received..."
               rows={2}
             />
+            <p className="text-xs text-text-secondary/50">
+              Markdown supported: **bold**, *italic*, [link text](url), - lists
+            </p>
           </div>
 
           <DialogFooter>
