@@ -34,17 +34,16 @@ export function BottleCard({
 
   // Track whether the entrance animation has played so DOM reorders
   // (from favoriting / pin-favorites) never replay it.
-  const hasAnimated = useRef(false);
-  // Dummy state toggle – the sole purpose is to force a re-render after
-  // flipping `hasAnimated` so the ref read in the JSX below picks it up.
-  const [, rerender] = useState(0);
+  const [hasAnimated, setHasAnimated] = useState(false);
 
-  const handleAnimationEnd = useCallback((e: React.AnimationEvent) => {
-    if (e.animationName === "fadeUp" && !hasAnimated.current) {
-      hasAnimated.current = true;
-      rerender((n) => n + 1);
-    }
-  }, []);
+  const handleAnimationEnd = useCallback(
+    (e: React.AnimationEvent) => {
+      if (e.animationName === "fadeUp" && !hasAnimated) {
+        setHasAnimated(true);
+      }
+    },
+    [hasAnimated],
+  );
 
   const sizerRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -94,8 +93,8 @@ export function BottleCard({
       className={cn(
         "group w-full h-full flex flex-col text-left rounded-xl border px-6 py-5 transition-all duration-200 ease-smooth cursor-pointer",
         "group-hover:shadow-md",
-        !hasAnimated.current && "animate-fade-up",
-        !hasAnimated.current && staggerClass,
+        !hasAnimated && "animate-fade-up",
+        !hasAnimated && staggerClass,
         isSelected
           ? "border-accent bg-accent-subtle/60 shadow-sm"
           : "border-border bg-surface group-hover:border-border-hover",
