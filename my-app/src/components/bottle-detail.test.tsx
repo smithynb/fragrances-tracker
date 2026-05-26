@@ -3,6 +3,13 @@ import { describe, expect, test, vi } from "vitest";
 import { getFunctionName } from "convex/server";
 import { BottleDetail } from "./bottle-detail";
 import { useQuery } from "convex/react";
+import type { Doc, Id } from "../../convex/_generated/dataModel";
+
+type MarkdownContentMockProps = {
+  content: string;
+  collapsible?: boolean;
+  className?: string;
+};
 
 const markdownSpy = vi.hoisted(() => vi.fn());
 
@@ -12,7 +19,7 @@ vi.mock("convex/react", () => ({
 }));
 
 vi.mock("@/components/markdown-content", () => ({
-  MarkdownContent: (props: any) => {
+  MarkdownContent: (props: MarkdownContentMockProps) => {
     markdownSpy(props);
     return (
       <div
@@ -57,11 +64,12 @@ const bottleFixture = {
   tags: ["signature"],
   comments: "**top note** with [docs](https://example.com)",
   isFavorite: false,
-} as any;
+} as Doc<"bottles">;
 
 describe("BottleDetail markdown wiring", () => {
   test("passes fragrance comments through MarkdownContent", () => {
-    useQueryMock.mockImplementation((query: unknown) => {
+    useQueryMock.mockImplementation((...args: unknown[]) => {
+      const [query] = args;
       const name = getFunctionName(query as never);
       if (name === "bottles:getBottle") return bottleFixture;
       if (name === "wearLogs:listWearLogsByBottle") return [];
@@ -70,7 +78,7 @@ describe("BottleDetail markdown wiring", () => {
 
     render(
       <BottleDetail
-        bottleId={"bottle_1" as any}
+        bottleId={"bottle_1" as Id<"bottles">}
         onEdit={vi.fn()}
         onAddWearLog={vi.fn()}
         onClose={vi.fn()}

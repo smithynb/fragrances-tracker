@@ -1,6 +1,13 @@
 import { render } from "@testing-library/react";
 import { describe, expect, test, vi } from "vitest";
 import { WearLogList } from "./wear-log-list";
+import type { Doc, Id } from "../../convex/_generated/dataModel";
+
+type MarkdownContentMockProps = {
+  content: string;
+  collapsible?: boolean;
+  className?: string;
+};
 
 const markdownSpy = vi.hoisted(() => vi.fn());
 
@@ -13,7 +20,7 @@ vi.mock("sonner", () => ({
 }));
 
 vi.mock("@/components/markdown-content", () => ({
-  MarkdownContent: (props: any) => {
+  MarkdownContent: (props: MarkdownContentMockProps) => {
     markdownSpy(props);
     return (
       <div
@@ -37,13 +44,16 @@ describe("WearLogList markdown wiring", () => {
       <WearLogList
         logs={[
           {
-            _id: "log_1",
+            _id: "log_1" as Id<"wearLogs">,
+            _creationTime: 0,
+            userId: "user_1" as Id<"users">,
+            bottleId: "bottle_1" as Id<"bottles">,
             wornAt: Date.now(),
             sprays: 2,
             context: "office",
             rating: 8,
             comment: "**bold note**",
-          } as any,
+          } satisfies Doc<"wearLogs">,
         ]}
       />,
     );

@@ -48,7 +48,7 @@ export function restoreOverflowLayout() {
       _origScrollHeight,
     );
   } else {
-    delete (HTMLElement.prototype as any).scrollHeight;
+    Reflect.deleteProperty(HTMLElement.prototype, "scrollHeight");
   }
   if (_origClientHeight) {
     Object.defineProperty(
@@ -57,6 +57,6 @@ export function restoreOverflowLayout() {
       _origClientHeight,
     );
   } else {
-    delete (HTMLElement.prototype as any).clientHeight;
+    Reflect.deleteProperty(HTMLElement.prototype, "clientHeight");
   }
 }

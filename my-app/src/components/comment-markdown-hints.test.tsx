@@ -3,6 +3,7 @@ import { describe, expect, test, vi } from "vitest";
 import { AddBottleDialog } from "./add-bottle-dialog";
 import { AddWearLogDialog } from "./add-wear-log-dialog";
 import { EditWearLogDialog } from "./edit-wear-log-dialog";
+import type { Doc, Id } from "../../convex/_generated/dataModel";
 
 vi.mock("convex/react", () => ({
   useMutation: () => vi.fn(),
@@ -21,16 +22,16 @@ const helperText =
 const noop = () => {};
 
 const wearLogFixture = {
-  _id: "wearLog_1",
+  _id: "wearLog_1" as Id<"wearLogs">,
   _creationTime: 0,
-  bottleId: "bottle_1",
+  bottleId: "bottle_1" as Id<"bottles">,
   wornAt: Date.now(),
   sprays: 3,
   context: undefined,
   rating: undefined,
   comment: "",
-  userId: "user_1",
-} as any;
+  userId: "user_1" as Id<"users">,
+} satisfies Doc<"wearLogs">;
 
 describe("comment editor guidance", () => {
   test("shows markdown guidance in the fragrance editor", () => {
@@ -40,7 +41,11 @@ describe("comment editor guidance", () => {
 
   test("shows markdown guidance in the new wear-log editor", () => {
     render(
-      <AddWearLogDialog open onOpenChange={noop} bottleId={"bottle_1" as any} />,
+      <AddWearLogDialog
+        open
+        onOpenChange={noop}
+        bottleId={"bottle_1" as Id<"bottles">}
+      />,
     );
     expect(screen.getByText(helperText)).toBeInTheDocument();
   });
