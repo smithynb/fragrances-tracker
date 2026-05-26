@@ -24,19 +24,14 @@ interface FavoriteToggleProps {
 // stable reference on every render. Re-creating the closure inside the
 // component would cause Convex to treat each render as a fresh mutation.
 // ──────────────────────────────────────────────────────────────────────────
-function optimisticToggle(
-  localStore: OptimisticLocalStore,
-  args: { bottleId: Id<"bottles"> },
-) {
+function optimisticToggle(localStore: OptimisticLocalStore, args: { bottleId: Id<"bottles"> }) {
   const list = localStore.getQuery(api.bottles.listBottles, {});
   if (list) {
     localStore.setQuery(
       api.bottles.listBottles,
       {},
       list.map((b) =>
-        b._id === args.bottleId
-          ? { ...b, isFavorite: !(b.isFavorite ?? false) }
-          : b,
+        b._id === args.bottleId ? { ...b, isFavorite: !(b.isFavorite ?? false) } : b,
       ),
     );
   }
@@ -56,9 +51,9 @@ export function FavoriteToggle({
   size = "card",
   className,
 }: FavoriteToggleProps) {
-  const toggleFavorite = useMutation(
-    api.bottles.toggleFavorite,
-  ).withOptimisticUpdate(optimisticToggle);
+  const toggleFavorite = useMutation(api.bottles.toggleFavorite).withOptimisticUpdate(
+    optimisticToggle,
+  );
 
   const handleClick = async (e: MouseEvent<HTMLButtonElement>) => {
     // Defensive: not strictly needed because the toggle is a DOM sibling of
@@ -111,9 +106,7 @@ export function FavoriteToggle({
         className={cn(
           icon,
           "absolute transition-opacity",
-          isFavorite
-            ? "fill-pink-500 text-pink-500 opacity-100"
-            : "opacity-0",
+          isFavorite ? "fill-pink-500 text-pink-500 opacity-100" : "opacity-0",
         )}
         aria-hidden="true"
       />
@@ -123,9 +116,7 @@ export function FavoriteToggle({
         className={cn(
           icon,
           "absolute transition-opacity",
-          isFavorite
-            ? "text-pink-500 opacity-0"
-            : "text-text-secondary opacity-100",
+          isFavorite ? "text-pink-500 opacity-0" : "text-text-secondary opacity-100",
         )}
         aria-hidden="true"
       />

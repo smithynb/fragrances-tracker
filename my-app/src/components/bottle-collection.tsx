@@ -157,10 +157,7 @@ export function BottleCollection({
             : "Add your first fragrance to start tracking your collection and wear history."}
         </p>
         <div className={cn("relative", isWelcome && "z-50")}>
-          <Button
-            onClick={onAddBottle}
-            className={cn("gap-2", isWelcome && "coach-pulse")}
-          >
+          <Button onClick={onAddBottle} className={cn("gap-2", isWelcome && "coach-pulse")}>
             <Plus className="h-4 w-4" />
             Add Fragrance
           </Button>
@@ -219,7 +216,11 @@ export function BottleCollection({
               className="h-7 gap-1.5 text-xs text-text-secondary hover:text-text px-2"
               aria-label="Sort fragrances"
             >
-              {sortDir === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />}
+              {sortDir === "asc" ? (
+                <ArrowUp className="h-3 w-3" />
+              ) : (
+                <ArrowDown className="h-3 w-3" />
+              )}
               {SORT_LABELS[sortBy]}
             </Button>
           </DropdownMenuTrigger>
@@ -240,11 +241,12 @@ export function BottleCollection({
                     {!isActive && <span className="w-3" />}
                     {SORT_LABELS[option]}
                   </span>
-                  {isActive && (
-                    sortDir === "asc"
-                      ? <ArrowUp className="h-3 w-3 text-text-secondary" />
-                      : <ArrowDown className="h-3 w-3 text-text-secondary" />
-                  )}
+                  {isActive &&
+                    (sortDir === "asc" ? (
+                      <ArrowUp className="h-3 w-3 text-text-secondary" />
+                    ) : (
+                      <ArrowDown className="h-3 w-3 text-text-secondary" />
+                    ))}
                 </DropdownMenuItem>
               );
             })}
@@ -260,9 +262,11 @@ export function BottleCollection({
               )}
             >
               <span className="flex items-center gap-2">
-                {pinFavorites
-                  ? <Check className="h-3 w-3 text-accent" />
-                  : <span className="w-3" />}
+                {pinFavorites ? (
+                  <Check className="h-3 w-3 text-accent" />
+                ) : (
+                  <span className="w-3" />
+                )}
                 Pin favorites to top
               </span>
             </DropdownMenuPrimitive.CheckboxItem>
@@ -272,12 +276,21 @@ export function BottleCollection({
 
       {/* Grid */}
       <div className="flex-1 overflow-y-auto scrollbar-fade pb-5 pt-4 -ml-2 pl-2 -mr-6 pr-6 lg:-mr-7 lg:pr-7">
-        <div key={animationKey} className="grid grid-cols-1 sm:grid-cols-2 gap-4 reduced-motion-fade-in">
+        <div
+          key={animationKey}
+          className="grid grid-cols-1 sm:grid-cols-2 gap-4 reduced-motion-fade-in"
+        >
           {filteredBottles.map((bottle, i) => {
             const stats = getBottleStats(bottleStats, bottle._id);
             const showCoachMark = i === 0 && onboardingStep === "select-bottle";
             return (
-              <div key={bottle._id} className={cn("relative group transition-transform duration-200 ease-smooth hover:-translate-y-0.5", showCoachMark && "z-50")}>
+              <div
+                key={bottle._id}
+                className={cn(
+                  "relative group transition-transform duration-200 ease-smooth hover:-translate-y-0.5",
+                  showCoachMark && "z-50",
+                )}
+              >
                 <BottleCard
                   bottle={bottle}
                   isSelected={selectedBottleId === bottle._id}

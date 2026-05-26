@@ -75,9 +75,7 @@ export function ConnectionBanner() {
 
   // Derive disconnected status — hasEverConnected is used directly, no state needed
   const isDisconnected =
-    !browserOnline ||
-    (!connStatus.isConnected &&
-      (connStatus.hasEverConnected || graceTimerFired));
+    !browserOnline || (!connStatus.isConnected && (connStatus.hasEverConnected || graceTimerFired));
 
   // Debounce: only set showBanner=true after sustained disconnection
   useEffect(() => {
@@ -117,8 +115,7 @@ export function ConnectionBanner() {
       >
         <WifiOff className="h-4 w-4 shrink-0" />
         <span>
-          Connection lost &mdash; your changes will not be saved until the
-          connection is restored.
+          Connection lost &mdash; your changes will not be saved until the connection is restored.
         </span>
       </div>
       <div className="h-10 shrink-0" />

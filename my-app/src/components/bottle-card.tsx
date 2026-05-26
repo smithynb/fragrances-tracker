@@ -107,9 +107,7 @@ export function BottleCard({
             {bottle.name}
           </h3>
           {bottle.brand && (
-            <p className="text-sm text-text-secondary mt-1 truncate">
-              {bottle.brand}
-            </p>
+            <p className="text-sm text-text-secondary mt-1 truncate">{bottle.brand}</p>
           )}
         </div>
         {bottle.sizeMl && (
@@ -131,16 +129,12 @@ export function BottleCard({
             </div>
           )}
           {totalSprays !== undefined && totalSprays > 0 && (
-            <div className="text-xs text-text-secondary">
-              {totalSprays} sprays
-            </div>
+            <div className="text-xs text-text-secondary">{totalSprays} sprays</div>
           )}
           {avgRating != null && avgRating > 0 && (
             <div className="flex items-center gap-1 text-xs text-text-secondary">
               <Star className="h-3 w-3 fill-current" />
-              <span>
-                {avgRating % 1 === 0 ? avgRating.toFixed(0) : avgRating.toFixed(1)}
-              </span>
+              <span>{avgRating % 1 === 0 ? avgRating.toFixed(0) : avgRating.toFixed(1)}</span>
             </div>
           )}
         </div>
@@ -156,7 +150,12 @@ export function BottleCard({
               tabIndex={-1}
             >
               {tags.map((tag) => (
-                <Badge key={tag} data-tag variant="tag" className="text-[10px] px-2 py-0.5 shrink-0">
+                <Badge
+                  key={tag}
+                  data-tag
+                  variant="tag"
+                  className="text-[10px] px-2 py-0.5 shrink-0"
+                >
                   {tag}
                 </Badge>
               ))}

@@ -52,8 +52,7 @@ export const listBottleStats = query({
         {
           wears: s.wears,
           sprays: s.sprays,
-          avgRating:
-            s.ratingCount > 0 ? s.ratingSum / s.ratingCount : null,
+          avgRating: s.ratingCount > 0 ? s.ratingSum / s.ratingCount : null,
         },
       ]),
     );
@@ -90,9 +89,7 @@ export const listWearLogsByBottle = query({
     // and results arrive ordered by wornAt descending via .order("desc").
     return await ctx.db
       .query("wearLogs")
-      .withIndex("by_user_bottle_time", (q) =>
-        q.eq("userId", userId).eq("bottleId", args.bottleId),
-      )
+      .withIndex("by_user_bottle_time", (q) => q.eq("userId", userId).eq("bottleId", args.bottleId))
       .order("desc")
       .collect();
   },
@@ -165,14 +162,10 @@ export const addWearLog = mutation({
 
     // Validate string lengths server-side (HTML max is client-only).
     if (args.comment && args.comment.length > MAX_COMMENT_LENGTH) {
-      throw new Error(
-        `Comment must be at most ${MAX_COMMENT_LENGTH} characters.`,
-      );
+      throw new Error(`Comment must be at most ${MAX_COMMENT_LENGTH} characters.`);
     }
     if (args.context && args.context.length > MAX_CONTEXT_LENGTH) {
-      throw new Error(
-        `Context must be at most ${MAX_CONTEXT_LENGTH} characters.`,
-      );
+      throw new Error(`Context must be at most ${MAX_CONTEXT_LENGTH} characters.`);
     }
 
     return await ctx.db.insert("wearLogs", {
@@ -203,8 +196,7 @@ export const updateWearLog = mutation({
     // in cases where the log is not found.
     if (args.wornAt !== undefined) assertValidWornAt(args.wornAt);
     if (args.sprays !== undefined) assertValidSprays(args.sprays);
-    if (args.rating !== undefined && args.rating !== null)
-      assertValidRating(args.rating);
+    if (args.rating !== undefined && args.rating !== null) assertValidRating(args.rating);
 
     const userId = await getUserId(ctx);
     await rateLimiter.limit(ctx, "updateWearLog", { key: userId, throws: true });
@@ -214,15 +206,19 @@ export const updateWearLog = mutation({
     }
 
     // Validate string lengths server-side.
-    if (args.comment !== undefined && args.comment !== null && args.comment.length > MAX_COMMENT_LENGTH) {
-      throw new Error(
-        `Comment must be at most ${MAX_COMMENT_LENGTH} characters.`,
-      );
+    if (
+      args.comment !== undefined &&
+      args.comment !== null &&
+      args.comment.length > MAX_COMMENT_LENGTH
+    ) {
+      throw new Error(`Comment must be at most ${MAX_COMMENT_LENGTH} characters.`);
     }
-    if (args.context !== undefined && args.context !== null && args.context.length > MAX_CONTEXT_LENGTH) {
-      throw new Error(
-        `Context must be at most ${MAX_CONTEXT_LENGTH} characters.`,
-      );
+    if (
+      args.context !== undefined &&
+      args.context !== null &&
+      args.context.length > MAX_CONTEXT_LENGTH
+    ) {
+      throw new Error(`Context must be at most ${MAX_CONTEXT_LENGTH} characters.`);
     }
 
     // Build the patch explicitly so that:

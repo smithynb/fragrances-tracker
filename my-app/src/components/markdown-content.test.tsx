@@ -4,8 +4,7 @@ import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import { MarkdownContent } from "./markdown-content";
 import { mockOverflowLayout, restoreOverflowLayout } from "@/test/dom-mocks";
 
-const richMarkdown =
-  "**bold** *italic* [docs](https://example.com)\n\n- one\n- two\n`code`";
+const richMarkdown = "**bold** *italic* [docs](https://example.com)\n\n- one\n- two\n`code`";
 
 describe("MarkdownContent", () => {
   beforeEach(() => {
@@ -25,10 +24,7 @@ describe("MarkdownContent", () => {
       "href",
       "https://example.com",
     );
-    expect(screen.getByRole("link", { name: "docs" })).toHaveAttribute(
-      "target",
-      "_blank",
-    );
+    expect(screen.getByRole("link", { name: "docs" })).toHaveAttribute("target", "_blank");
     expect(screen.getByRole("link", { name: "docs" })).toHaveAttribute(
       "rel",
       "noopener noreferrer",
@@ -47,9 +43,7 @@ describe("MarkdownContent", () => {
   });
 
   test("renders plain text without markdown markings", () => {
-    const { container } = render(
-      <MarkdownContent content="Just some plain text." />,
-    );
+    const { container } = render(<MarkdownContent content="Just some plain text." />);
 
     // No rich elements, but the text should appear.
     expect(container.querySelector("strong")).toBeNull();
@@ -65,9 +59,7 @@ describe("MarkdownContent", () => {
   });
 
   test("does not render disallowed HTML tags", () => {
-    const { container } = render(
-      <MarkdownContent content="safe <script>alert(1)</script> text" />,
-    );
+    const { container } = render(<MarkdownContent content="safe <script>alert(1)</script> text" />);
 
     // No DOM script node is created — HTML is either escaped or stripped.
     expect(container.querySelector("script")).toBeNull();

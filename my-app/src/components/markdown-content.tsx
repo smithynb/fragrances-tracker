@@ -14,7 +14,14 @@ interface MarkdownContentProps {
 
 // Hoisted to module scope so prop identity is stable across renders.
 const ALLOWED_ELEMENTS: Options["allowedElements"] = [
-  "p", "a", "ul", "ol", "li", "strong", "em", "code",
+  "p",
+  "a",
+  "ul",
+  "ol",
+  "li",
+  "strong",
+  "em",
+  "code",
 ];
 
 const REMARK_PLUGINS: Options["remarkPlugins"] = [remarkGfm];
@@ -29,11 +36,7 @@ const MARKDOWN_COMPONENTS: Components = {
   },
 };
 
-export function MarkdownContent({
-  content,
-  collapsible = false,
-  className,
-}: MarkdownContentProps) {
+export function MarkdownContent({ content, collapsible = false, className }: MarkdownContentProps) {
   const [collapsed, setCollapsed] = useState(collapsible);
   const [overflows, setOverflows] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);

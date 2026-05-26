@@ -8,14 +8,7 @@ import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { EditWearLogDialog } from "@/components/edit-wear-log-dialog";
 import { MarkdownContent } from "@/components/markdown-content";
-import {
-  Droplets,
-  Calendar,
-  Star,
-  MessageSquare,
-  Pencil,
-  Trash2,
-} from "lucide-react";
+import { Droplets, Calendar, Star, MessageSquare, Pencil, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { getApiErrorMessage } from "@/lib/utils";
@@ -36,9 +29,7 @@ export function WearLogList({ logs }: WearLogListProps) {
           <Calendar className="h-6 w-6 text-text-secondary/40" />
         </div>
         <p className="text-sm text-text-secondary">No wear logs yet</p>
-        <p className="text-xs text-text-secondary/60 mt-1">
-          Log your first wear to start tracking
-        </p>
+        <p className="text-xs text-text-secondary/60 mt-1">Log your first wear to start tracking</p>
       </div>
     );
   }
@@ -65,8 +56,7 @@ export function WearLogList({ logs }: WearLogListProps) {
     return d.toLocaleDateString("en-US", {
       month: "short",
       day: "numeric",
-      year:
-        d.getFullYear() !== new Date().getFullYear() ? "numeric" : undefined,
+      year: d.getFullYear() !== new Date().getFullYear() ? "numeric" : undefined,
     });
   };
 
@@ -86,7 +76,7 @@ export function WearLogList({ logs }: WearLogListProps) {
       acc[dateKey].push(log);
       return acc;
     },
-    {} as Record<string, Doc<"wearLogs">[]>
+    {} as Record<string, Doc<"wearLogs">[]>,
   );
 
   return (
@@ -116,9 +106,7 @@ export function WearLogList({ logs }: WearLogListProps) {
                       </span>
                     </div>
 
-                    <span className="text-xs text-text-secondary">
-                      {formatTime(log.wornAt)}
-                    </span>
+                    <span className="text-xs text-text-secondary">{formatTime(log.wornAt)}</span>
 
                     {log.context && (
                       <span className="text-xs text-text-secondary bg-surface-alt px-2.5 py-1 rounded-md">
@@ -162,13 +150,11 @@ export function WearLogList({ logs }: WearLogListProps) {
                     onClick={() => handleDelete(log._id)}
                     onMouseLeave={() => setDeletingId(null)}
                     aria-label={
-                      deletingId === log._id
-                        ? "Confirm delete wear log"
-                        : "Delete wear log"
+                      deletingId === log._id ? "Confirm delete wear log" : "Delete wear log"
                     }
                     className={cn(
                       "h-8 transition-all duration-300 ease-out opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100 focus-visible:opacity-100 shrink-0 overflow-hidden relative gap-0",
-                      deletingId === log._id ? "w-[100px] px-3" : "w-8 px-0 justify-center"
+                      deletingId === log._id ? "w-[100px] px-3" : "w-8 px-0 justify-center",
                     )}
                   >
                     <Trash2 className="h-3.5 w-3.5 shrink-0 z-10" />
@@ -176,7 +162,9 @@ export function WearLogList({ logs }: WearLogListProps) {
                       aria-hidden={deletingId !== log._id}
                       className={cn(
                         "overflow-hidden transition-all duration-300 ease-out whitespace-nowrap text-xs flex items-center z-10",
-                        deletingId === log._id ? "w-[56px] ml-1.5 opacity-100" : "w-0 ml-0 opacity-0"
+                        deletingId === log._id
+                          ? "w-[56px] ml-1.5 opacity-100"
+                          : "w-0 ml-0 opacity-0",
                       )}
                     >
                       Confirm
@@ -192,7 +180,9 @@ export function WearLogList({ logs }: WearLogListProps) {
       {editingLog && (
         <EditWearLogDialog
           open={!!editingLog}
-          onOpenChange={(open) => { if (!open) setEditingLog(null); }}
+          onOpenChange={(open) => {
+            if (!open) setEditingLog(null);
+          }}
           log={editingLog}
         />
       )}
