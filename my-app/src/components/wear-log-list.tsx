@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { EditWearLogDialog } from "@/components/edit-wear-log-dialog";
+import { MarkdownContent } from "@/components/markdown-content";
 import {
   Droplets,
   Calendar,
@@ -134,11 +135,13 @@ export function WearLogList({ logs }: WearLogListProps) {
                   </div>
 
                   {log.comment && (
-                    <div className="flex items-start gap-1.5 mt-1.5">
+                    <div className="flex items-start gap-1.5 mt-2">
                       <MessageSquare className="h-3 w-3 text-text-secondary/50 mt-0.5 shrink-0" />
-                      <p className="text-xs text-text-secondary leading-relaxed">
-                        {log.comment}
-                      </p>
+                      <MarkdownContent
+                        content={log.comment}
+                        collapsible
+                        className="text-xs text-text-secondary"
+                      />
                     </div>
                   )}
                 </div>

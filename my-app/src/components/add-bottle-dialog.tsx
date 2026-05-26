@@ -320,6 +320,9 @@ export function AddBottleDialog({
               placeholder="Personal thoughts, batch code, where purchased..."
               rows={3}
             />
+            <p className="text-xs text-text-secondary/50">
+              Markdown supported: **bold**, *italic*, [link text](url), - lists
+            </p>
           </div>
 
           <DialogFooter>
