@@ -1,0 +1,21 @@
+# Build outputs
+.next/
+out/
+build/
+dist/
+
+# Dependencies
+node_modules/
+
+# Generated files
+convex/_generated/
+
+# Lockfiles (binary/structured — not human-formatted)
+bun.lock
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Misc
+*.min.js
+*.min.css

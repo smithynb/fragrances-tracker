@@ -22,9 +22,7 @@ describe("unauthenticated access", () => {
     const t = setupTest();
     const user = await createTestUser(t);
     const bottleId = await addBottle(user.as);
-    expect(
-      await t.query(api.wearLogs.listWearLogsByBottle, { bottleId }),
-    ).toEqual([]);
+    expect(await t.query(api.wearLogs.listWearLogsByBottle, { bottleId })).toEqual([]);
   });
 
   test("listBottleStats returns empty object", async () => {
@@ -80,9 +78,9 @@ describe("unauthenticated access", () => {
       wornAt: Date.now(),
       sprays: 1,
     });
-    await expect(
-      t.mutation(api.wearLogs.deleteWearLog, { wearLogId: logId }),
-    ).rejects.toThrowError("Unauthenticated.");
+    await expect(t.mutation(api.wearLogs.deleteWearLog, { wearLogId: logId })).rejects.toThrowError(
+      "Unauthenticated.",
+    );
   });
 });
 
@@ -167,9 +165,7 @@ describe("ownership isolation", () => {
       sprays: 1,
     });
 
-    expect(
-      await bob.as.query(api.wearLogs.getWearLog, { wearLogId: logId }),
-    ).toBeNull();
+    expect(await bob.as.query(api.wearLogs.getWearLog, { wearLogId: logId })).toBeNull();
   });
 
   test("updateWearLog throws for another user's log", async () => {

@@ -12,10 +12,7 @@ export function cn(...inputs: ClassValue[]) {
  * else.  Raw error details are only logged in non-production environments.
  */
 export function isFutureWornAtError(err: unknown): boolean {
-  return (
-    err instanceof Error &&
-    err.message.includes("wornAt cannot be in the future")
-  );
+  return err instanceof Error && err.message.includes("wornAt cannot be in the future");
 }
 
 export function getApiErrorMessage(err: unknown): string {

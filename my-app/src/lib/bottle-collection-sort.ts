@@ -16,17 +16,11 @@ function compareNames(a: BottleCollectionItem, b: BottleCollectionItem): number 
   return a.name.localeCompare(b.name);
 }
 
-function compareCreatedDesc(
-  a: BottleCollectionItem,
-  b: BottleCollectionItem,
-): number {
+function compareCreatedDesc(a: BottleCollectionItem, b: BottleCollectionItem): number {
   return b._creationTime - a._creationTime;
 }
 
-function compareFallback(
-  a: BottleCollectionItem,
-  b: BottleCollectionItem,
-): number {
+function compareFallback(a: BottleCollectionItem, b: BottleCollectionItem): number {
   return compareNames(a, b) || compareCreatedDesc(a, b) || a._id.localeCompare(b._id);
 }
 
@@ -42,10 +36,7 @@ function matchesSearch(bottle: BottleCollectionItem, rawSearch: string): boolean
   );
 }
 
-export function getBottleStats(
-  bottleStats: BottleStatsMap | undefined,
-  bottleId: string,
-) {
+export function getBottleStats(bottleStats: BottleStatsMap | undefined, bottleId: string) {
   return bottleStats?.[bottleId] ?? EMPTY_STATS;
 }
 
@@ -85,10 +76,7 @@ export function filterAndSortBottles({
   const filtered = bottles.filter((bottle) => matchesSearch(bottle, search));
   const dir = sortDir === "asc" ? 1 : -1;
 
-  const baseComparator = (
-    a: BottleCollectionItem,
-    b: BottleCollectionItem,
-  ): number => {
+  const baseComparator = (a: BottleCollectionItem, b: BottleCollectionItem): number => {
     switch (sortBy) {
       case "name":
         return dir * compareNames(a, b) || compareCreatedDesc(a, b) || a._id.localeCompare(b._id);
@@ -107,7 +95,11 @@ export function filterAndSortBottles({
       }
       case "created":
       default:
-        return dir * (a._creationTime - b._creationTime) || compareNames(a, b) || a._id.localeCompare(b._id);
+        return (
+          dir * (a._creationTime - b._creationTime) ||
+          compareNames(a, b) ||
+          a._id.localeCompare(b._id)
+        );
     }
   };
 

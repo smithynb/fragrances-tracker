@@ -18,19 +18,22 @@ import { LoaderCircle, LogOut, Wine } from "lucide-react";
 export function HomePage() {
   const router = useRouter();
   const { signOut } = useAuthActions();
-  const [selectedBottleId, setSelectedBottleId] =
-    useState<Id<"bottles"> | null>(null);
+  const [selectedBottleId, setSelectedBottleId] = useState<Id<"bottles"> | null>(null);
   const [addBottleOpen, setAddBottleOpen] = useState(false);
   const [editBottle, setEditBottle] = useState<Doc<"bottles"> | null>(null);
   const [addWearLogOpen, setAddWearLogOpen] = useState(false);
   const [mobileDetailOpen, setMobileDetailOpen] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
   const currentUser = useQuery(api.users.currentUser);
-  const { step: onboardingStep, advance: advanceOnboarding, dismiss: dismissOnboarding } = useOnboarding();
+  const {
+    step: onboardingStep,
+    advance: advanceOnboarding,
+    dismiss: dismissOnboarding,
+  } = useOnboarding();
 
   const selectedBottle = useQuery(
     api.bottles.getBottle,
-    selectedBottleId ? { bottleId: selectedBottleId } : "skip"
+    selectedBottleId ? { bottleId: selectedBottleId } : "skip",
   );
 
   const handleSelectBottle = (id: Id<"bottles">) => {
@@ -51,7 +54,8 @@ export function HomePage() {
   // Used to gate onboarding backdrop until data has loaded.
   const bottles = useQuery(api.bottles.listBottles);
 
-  const isTourActive = onboardingStep !== null && bottles !== undefined && !addBottleOpen && !addWearLogOpen;
+  const isTourActive =
+    onboardingStep !== null && bottles !== undefined && !addBottleOpen && !addWearLogOpen;
   const [isBackdropSettled, setIsBackdropSettled] = useState(false);
 
   // Only reset the backdrop when onboarding truly ends (step → null).
@@ -99,16 +103,13 @@ export function HomePage() {
     }
   };
 
-  const userLabel =
-    currentUser?.name ?? currentUser?.email ?? "Signed in with Google";
+  const userLabel = currentUser?.name ?? currentUser?.email ?? "Signed in with Google";
 
   return (
     <div className="flex h-dvh flex-col bg-bg">
       <header className="flex shrink-0 items-center justify-between gap-4 border-b border-border/50 bg-bg/90 px-4 py-3 backdrop-blur-sm sm:px-6">
         <div className="min-w-0">
-          <p className="font-display text-xl font-semibold text-text">
-            Fragrance Tracker
-          </p>
+          <p className="font-display text-xl font-semibold text-text">Fragrance Tracker</p>
           <p className="truncate text-sm text-text-secondary">{userLabel}</p>
         </div>
 

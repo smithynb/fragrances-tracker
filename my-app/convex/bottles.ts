@@ -28,25 +28,17 @@ function assertValidBottleInput(args: {
     throw new Error(`Brand must be at most ${MAX_BRAND_LENGTH} characters.`);
   }
   if (args.comments && args.comments.length > MAX_COMMENTS_LENGTH) {
-    throw new Error(
-      `Comments must be at most ${MAX_COMMENTS_LENGTH} characters.`,
-    );
+    throw new Error(`Comments must be at most ${MAX_COMMENTS_LENGTH} characters.`);
   }
   if (args.tags) {
     if (args.tags.length > MAX_TAGS_COUNT) {
       throw new Error(`You can add at most ${MAX_TAGS_COUNT} tags.`);
     }
     if (args.tags.some((t) => t.length > MAX_TAG_LENGTH)) {
-      throw new Error(
-        `Each tag must be at most ${MAX_TAG_LENGTH} characters.`,
-      );
+      throw new Error(`Each tag must be at most ${MAX_TAG_LENGTH} characters.`);
     }
   }
-  if (
-    args.sizeMl !== undefined &&
-    args.sizeMl !== null &&
-    args.sizeMl > MAX_SIZE_ML
-  ) {
+  if (args.sizeMl !== undefined && args.sizeMl !== null && args.sizeMl > MAX_SIZE_ML) {
     throw new Error(`Size must be at most ${MAX_SIZE_ML} mL.`);
   }
 }
@@ -155,8 +147,7 @@ export const updateBottle = mutation({
     if (args.brand !== undefined) patch.brand = args.brand ?? undefined;
     if (args.sizeMl !== undefined) patch.sizeMl = args.sizeMl ?? undefined;
     if (args.tags !== undefined) patch.tags = args.tags ?? undefined;
-    if (args.comments !== undefined)
-      patch.comments = args.comments ?? undefined;
+    if (args.comments !== undefined) patch.comments = args.comments ?? undefined;
 
     await ctx.db.patch(args.bottleId, patch);
   },

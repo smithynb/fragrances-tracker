@@ -27,11 +27,7 @@ interface AddBottleDialogProps {
   editBottle?: Doc<"bottles"> | null;
 }
 
-export function AddBottleDialog({
-  open,
-  onOpenChange,
-  editBottle,
-}: AddBottleDialogProps) {
+export function AddBottleDialog({ open, onOpenChange, editBottle }: AddBottleDialogProps) {
   const addBottle = useMutation(api.bottles.addBottle);
   const updateBottle = useMutation(api.bottles.updateBottle);
 
@@ -92,9 +88,7 @@ export function AddBottleDialog({
       .split(",")
       .map((t) => t.trim())
       .filter(
-        (t) =>
-          t.length > 0 &&
-          !tags.some((existing) => existing.toLowerCase() === t.toLowerCase()),
+        (t) => t.length > 0 && !tags.some((existing) => existing.toLowerCase() === t.toLowerCase()),
       );
     if (newTags.length > 0) {
       setTags([...tags, ...newTags]);
@@ -178,9 +172,7 @@ export function AddBottleDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>
-            {isEditing ? "Edit Fragrance" : "Add Fragrance"}
-          </DialogTitle>
+          <DialogTitle>{isEditing ? "Edit Fragrance" : "Add Fragrance"}</DialogTitle>
           <DialogDescription className="sr-only">
             {isEditing ? "Edit fragrance form" : "Add fragrance form"}
           </DialogDescription>
@@ -207,11 +199,7 @@ export function AddBottleDialog({
                   clearError("name");
                 }}
                 placeholder="Aventus"
-                className={
-                  errors.name
-                    ? "border-danger focus:border-danger focus:ring-danger"
-                    : ""
-                }
+                className={errors.name ? "border-danger focus:border-danger focus:ring-danger" : ""}
                 aria-invalid={!!errors.name}
                 aria-describedby="name-error"
               />
@@ -250,11 +238,7 @@ export function AddBottleDialog({
               placeholder="100"
               min="1"
               step="1"
-              className={
-                errors.sizeMl
-                  ? "border-danger focus:border-danger focus:ring-danger"
-                  : ""
-              }
+              className={errors.sizeMl ? "border-danger focus:border-danger focus:ring-danger" : ""}
               aria-invalid={!!errors.sizeMl}
               aria-describedby="size-error"
             />
@@ -327,22 +311,17 @@ export function AddBottleDialog({
 
           <DialogFooter>
             {formError && (
-              <p role="alert" className="w-full rounded-lg border border-danger/30 bg-danger/5 px-3 py-2.5 text-sm text-danger">
+              <p
+                role="alert"
+                className="w-full rounded-lg border border-danger/30 bg-danger/5 px-3 py-2.5 text-sm text-danger"
+              >
                 {formError}
               </p>
             )}
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-            >
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button
-              type="submit"
-              disabled={submitting}
-              aria-keyshortcuts="Control+Enter"
-            >
+            <Button type="submit" disabled={submitting} aria-keyshortcuts="Control+Enter">
               <span>
                 {submitting
                   ? isEditing
@@ -353,10 +332,7 @@ export function AddBottleDialog({
                     : "Add Fragrance"}
               </span>
               {!submitting && (
-                <KbdGroup
-                  aria-hidden="true"
-                  className="ml-1"
-                >
+                <KbdGroup aria-hidden="true" className="ml-1">
                   <Kbd className="border-white/20 bg-white/14 text-white shadow-[inset_0_-1px_0_rgba(255,255,255,0.18)]">
                     Ctrl
                   </Kbd>

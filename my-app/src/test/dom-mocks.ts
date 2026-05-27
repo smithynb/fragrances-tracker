@@ -1,14 +1,8 @@
 import { vi } from "vitest";
 
 // Remember the original descriptors so we can put them back after each test.
-const _origScrollHeight = Object.getOwnPropertyDescriptor(
-  HTMLElement.prototype,
-  "scrollHeight",
-);
-const _origClientHeight = Object.getOwnPropertyDescriptor(
-  HTMLElement.prototype,
-  "clientHeight",
-);
+const _origScrollHeight = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "scrollHeight");
+const _origClientHeight = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "clientHeight");
 
 export function mockOverflowLayout({
   scrollHeight = 120,
@@ -42,20 +36,12 @@ export function mockOverflowLayout({
 /** Restore the original prototype descriptors. Call in afterEach / afterAll. */
 export function restoreOverflowLayout() {
   if (_origScrollHeight) {
-    Object.defineProperty(
-      HTMLElement.prototype,
-      "scrollHeight",
-      _origScrollHeight,
-    );
+    Object.defineProperty(HTMLElement.prototype, "scrollHeight", _origScrollHeight);
   } else {
     Reflect.deleteProperty(HTMLElement.prototype, "scrollHeight");
   }
   if (_origClientHeight) {
-    Object.defineProperty(
-      HTMLElement.prototype,
-      "clientHeight",
-      _origClientHeight,
-    );
+    Object.defineProperty(HTMLElement.prototype, "clientHeight", _origClientHeight);
   } else {
     Reflect.deleteProperty(HTMLElement.prototype, "clientHeight");
   }

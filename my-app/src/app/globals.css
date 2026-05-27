@@ -29,21 +29,21 @@
 
 /* ── Light theme (milky beige) ───────────────────────────────────────────── */
 :root {
-  --bg: #F5F0EA;
-  --surface: #FFFFFF;
-  --surface-alt: #EDE6DD;
-  --border-clr: #E0D8CE;
-  --border-hover: #C9BFAF;
-  --text: #2C2622;
-  --text-secondary: #8A7E73;
-  --accent: #9B8B78;
-  --accent-hover: #7D6E5D;
-  --accent-subtle: #F0EAE2;
-  --danger: #C4564A;
-  --danger-hover: #A84339;
-  --ring: #B8A99A;
-  --input-clr: #F7F3EE;
-  --input-focus: #FFFFFF;
+  --bg: #f5f0ea;
+  --surface: #ffffff;
+  --surface-alt: #ede6dd;
+  --border-clr: #e0d8ce;
+  --border-hover: #c9bfaf;
+  --text: #2c2622;
+  --text-secondary: #8a7e73;
+  --accent: #9b8b78;
+  --accent-hover: #7d6e5d;
+  --accent-subtle: #f0eae2;
+  --danger: #c4564a;
+  --danger-hover: #a84339;
+  --ring: #b8a99a;
+  --input-clr: #f7f3ee;
+  --input-focus: #ffffff;
   --overlay: rgba(44, 38, 34, 0.4);
 
   color-scheme: light;
@@ -52,19 +52,19 @@
 /* ── Dark theme (grayish dark blue) ──────────────────────────────────────── */
 .dark {
   --bg: #151823;
-  --surface: #1C2030;
+  --surface: #1c2030;
   --surface-alt: #232840;
-  --border-clr: #2C3150;
-  --border-hover: #3D4368;
-  --text: #E4DFD9;
+  --border-clr: #2c3150;
+  --border-hover: #3d4368;
+  --text: #e4dfd9;
   --text-secondary: #848899;
-  --accent: #B8A99A;
-  --accent-hover: #D4C4B2;
-  --accent-subtle: #2A3058;
-  --danger: #E0685E;
-  --danger-hover: #F07B72;
-  --ring: #6C7093;
-  --input-clr: #1C2030;
+  --accent: #b8a99a;
+  --accent-hover: #d4c4b2;
+  --accent-subtle: #2a3058;
+  --danger: #e0685e;
+  --danger-hover: #f07b72;
+  --ring: #6c7093;
+  --input-clr: #1c2030;
   --input-focus: #232840;
   --overlay: rgba(12, 14, 22, 0.6);
 
@@ -92,7 +92,9 @@ body {
   font-family: var(--font-geist-sans), system-ui, sans-serif;
   min-height: 100dvh;
   overflow: hidden;
-  transition: background-color 0.3s ease, color 0.3s ease;
+  transition:
+    background-color 0.3s ease,
+    color 0.3s ease;
 }
 
 /* ── Custom scrollbar ────────────────────────────────────────────────────── */
@@ -303,8 +305,14 @@ body {
   }
 
   /* Zero out stagger delays so the whole group fades in together */
-  .stagger-1, .stagger-2, .stagger-3, .stagger-4,
-  .stagger-5, .stagger-6, .stagger-7, .stagger-8 {
+  .stagger-1,
+  .stagger-2,
+  .stagger-3,
+  .stagger-4,
+  .stagger-5,
+  .stagger-6,
+  .stagger-7,
+  .stagger-8 {
     animation-delay: 0s !important;
   }
 

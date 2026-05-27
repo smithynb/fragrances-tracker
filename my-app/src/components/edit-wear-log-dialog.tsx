@@ -36,11 +36,7 @@ interface EditWearLogDialogProps {
   log: Doc<"wearLogs">;
 }
 
-export function EditWearLogDialog({
-  open,
-  onOpenChange,
-  log,
-}: EditWearLogDialogProps) {
+export function EditWearLogDialog({ open, onOpenChange, log }: EditWearLogDialogProps) {
   const updateWearLog = useMutation(api.wearLogs.updateWearLog);
 
   const [sprays, setSprays] = useState("");
@@ -142,8 +138,7 @@ export function EditWearLogDialog({
       weekday: "short",
       month: "short",
       day: "numeric",
-      year:
-        d.getFullYear() !== new Date().getFullYear() ? "numeric" : undefined,
+      year: d.getFullYear() !== new Date().getFullYear() ? "numeric" : undefined,
     });
   };
 
@@ -160,12 +155,16 @@ export function EditWearLogDialog({
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Edit Wear Log</DialogTitle>
-          <DialogDescription>
-            Update your notes for this wear.
-          </DialogDescription>
+          <DialogDescription>Update your notes for this wear.</DialogDescription>
         </DialogHeader>
 
-        <form ref={formRef} onSubmit={handleSubmit} onKeyDown={handleFormKeyDown} noValidate className="space-y-5">
+        <form
+          ref={formRef}
+          onSubmit={handleSubmit}
+          onKeyDown={handleFormKeyDown}
+          noValidate
+          className="space-y-5"
+        >
           {/* Read-only date/time */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
@@ -200,9 +199,7 @@ export function EditWearLogDialog({
                 max={MAX_SPRAYS}
                 required
                 className={
-                  errors.sprays
-                    ? "border-danger focus:border-danger focus:ring-danger"
-                    : ""
+                  errors.sprays ? "border-danger focus:border-danger focus:ring-danger" : ""
                 }
                 aria-invalid={!!errors.sprays}
                 aria-describedby="edit-sprays-error"
@@ -231,9 +228,7 @@ export function EditWearLogDialog({
                 max="10"
                 placeholder="Optional"
                 className={
-                  errors.rating
-                    ? "border-danger focus:border-danger focus:ring-danger"
-                    : ""
+                  errors.rating ? "border-danger focus:border-danger focus:ring-danger" : ""
                 }
                 aria-invalid={!!errors.rating}
                 aria-describedby="edit-rating-error"
@@ -253,9 +248,7 @@ export function EditWearLogDialog({
             <Label>Context</Label>
             <Select
               value={context || NO_CONTEXT_VALUE}
-              onValueChange={(value) =>
-                setContext(value === NO_CONTEXT_VALUE ? "" : value)
-              }
+              onValueChange={(value) => setContext(value === NO_CONTEXT_VALUE ? "" : value)}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Select occasion..." />
@@ -288,15 +281,14 @@ export function EditWearLogDialog({
 
           <DialogFooter>
             {formError && (
-              <p role="alert" className="w-full rounded-lg border border-danger/30 bg-danger/5 px-3 py-2.5 text-sm text-danger">
+              <p
+                role="alert"
+                className="w-full rounded-lg border border-danger/30 bg-danger/5 px-3 py-2.5 text-sm text-danger"
+              >
                 {formError}
               </p>
             )}
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-            >
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
             <Button type="submit" disabled={submitting} aria-keyshortcuts="Control+Enter">

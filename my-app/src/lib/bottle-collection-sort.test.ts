@@ -143,12 +143,7 @@ describe("filterAndSortBottles", () => {
           sortDir: "asc",
         }),
       ),
-    ).toEqual([
-      "Acqua di Parma",
-      "Amouage Jubilation",
-      "Byredo Bal d'Afrique",
-      "Zoologist Bee",
-    ]);
+    ).toEqual(["Acqua di Parma", "Amouage Jubilation", "Byredo Bal d'Afrique", "Zoologist Bee"]);
 
     expect(
       names(
@@ -160,12 +155,7 @@ describe("filterAndSortBottles", () => {
           sortDir: "desc",
         }),
       ),
-    ).toEqual([
-      "Zoologist Bee",
-      "Byredo Bal d'Afrique",
-      "Amouage Jubilation",
-      "Acqua di Parma",
-    ]);
+    ).toEqual(["Zoologist Bee", "Byredo Bal d'Afrique", "Amouage Jubilation", "Acqua di Parma"]);
   });
 
   test("sorts by wears in both directions with deterministic tie-breakers", () => {
@@ -179,12 +169,7 @@ describe("filterAndSortBottles", () => {
           sortDir: "desc",
         }),
       ),
-    ).toEqual([
-      "Byredo Bal d'Afrique",
-      "Zoologist Bee",
-      "Acqua di Parma",
-      "Amouage Jubilation",
-    ]);
+    ).toEqual(["Byredo Bal d'Afrique", "Zoologist Bee", "Acqua di Parma", "Amouage Jubilation"]);
 
     expect(
       names(
@@ -196,12 +181,7 @@ describe("filterAndSortBottles", () => {
           sortDir: "asc",
         }),
       ),
-    ).toEqual([
-      "Amouage Jubilation",
-      "Acqua di Parma",
-      "Byredo Bal d'Afrique",
-      "Zoologist Bee",
-    ]);
+    ).toEqual(["Amouage Jubilation", "Acqua di Parma", "Byredo Bal d'Afrique", "Zoologist Bee"]);
   });
 
   test("sorts by rating in both directions and always keeps unrated bottles last", () => {
@@ -215,12 +195,7 @@ describe("filterAndSortBottles", () => {
           sortDir: "desc",
         }),
       ),
-    ).toEqual([
-      "Byredo Bal d'Afrique",
-      "Amouage Jubilation",
-      "Zoologist Bee",
-      "Acqua di Parma",
-    ]);
+    ).toEqual(["Byredo Bal d'Afrique", "Amouage Jubilation", "Zoologist Bee", "Acqua di Parma"]);
 
     expect(
       names(
@@ -232,12 +207,7 @@ describe("filterAndSortBottles", () => {
           sortDir: "asc",
         }),
       ),
-    ).toEqual([
-      "Amouage Jubilation",
-      "Zoologist Bee",
-      "Byredo Bal d'Afrique",
-      "Acqua di Parma",
-    ]);
+    ).toEqual(["Amouage Jubilation", "Zoologist Bee", "Byredo Bal d'Afrique", "Acqua di Parma"]);
   });
 
   test("uses zeroed stats for bottles without wear data", () => {
@@ -249,10 +219,7 @@ describe("filterAndSortBottles", () => {
       sortDir: "asc",
     });
 
-    expect(names(result).slice(0, 2)).toEqual([
-      "CdG Avignon",
-      "Amouage Jubilation",
-    ]);
+    expect(names(result).slice(0, 2)).toEqual(["CdG Avignon", "Amouage Jubilation"]);
   });
 
   test("filters by name, brand, and tags before sorting", () => {
@@ -302,10 +269,7 @@ describe("filterAndSortBottles", () => {
       sortDir: "desc",
     });
 
-    expect(names(result)).toEqual([
-      "Amouage Jubilation",
-      "Zoologist Bee",
-    ]);
+    expect(names(result)).toEqual(["Amouage Jubilation", "Zoologist Bee"]);
   });
 
   test("pinFavorites: true with sortBy name lifts favorites then sorts each group", () => {

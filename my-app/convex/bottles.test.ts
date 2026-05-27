@@ -24,9 +24,9 @@ describe("unauthenticated access", () => {
 
   test("addBottle throws", async () => {
     const t = setupTest();
-    await expect(
-      t.mutation(api.bottles.addBottle, { name: "Test" }),
-    ).rejects.toThrowError("Unauthenticated.");
+    await expect(t.mutation(api.bottles.addBottle, { name: "Test" })).rejects.toThrowError(
+      "Unauthenticated.",
+    );
   });
 
   test("updateBottle throws", async () => {
@@ -46,9 +46,9 @@ describe("unauthenticated access", () => {
     const bottleId = await user.as.mutation(api.bottles.addBottle, {
       name: "Test",
     });
-    await expect(
-      t.mutation(api.bottles.deleteBottle, { bottleId }),
-    ).rejects.toThrowError("Unauthenticated.");
+    await expect(t.mutation(api.bottles.deleteBottle, { bottleId })).rejects.toThrowError(
+      "Unauthenticated.",
+    );
   });
 });
 
@@ -111,9 +111,9 @@ describe("ownership isolation", () => {
       name: "Alice Only",
     });
 
-    await expect(
-      bob.as.mutation(api.bottles.deleteBottle, { bottleId }),
-    ).rejects.toThrowError("Bottle not found or access denied.");
+    await expect(bob.as.mutation(api.bottles.deleteBottle, { bottleId })).rejects.toThrowError(
+      "Bottle not found or access denied.",
+    );
   });
 });
 
@@ -683,9 +683,9 @@ describe("toggleFavorite", () => {
       name: "Test",
     });
 
-    await expect(
-      t.mutation(api.bottles.toggleFavorite, { bottleId }),
-    ).rejects.toThrowError("Unauthenticated.");
+    await expect(t.mutation(api.bottles.toggleFavorite, { bottleId })).rejects.toThrowError(
+      "Unauthenticated.",
+    );
   });
 
   test("throws when toggling another user's bottle", async () => {
@@ -696,8 +696,8 @@ describe("toggleFavorite", () => {
       name: "Alice Only",
     });
 
-    await expect(
-      bob.as.mutation(api.bottles.toggleFavorite, { bottleId }),
-    ).rejects.toThrowError("Bottle not found or access denied.");
+    await expect(bob.as.mutation(api.bottles.toggleFavorite, { bottleId })).rejects.toThrowError(
+      "Bottle not found or access denied.",
+    );
   });
 });

@@ -83,10 +83,7 @@ export function CoachMark({
 
   // ── Compute fixed position ────────────────────────────────────────────
 
-  const top =
-    position === "bottom"
-      ? rect.bottom + GAP
-      : rect.top - GAP;
+  const top = position === "bottom" ? rect.bottom + GAP : rect.top - GAP;
 
   let left: number;
   if (align === "start") {
@@ -96,17 +93,11 @@ export function CoachMark({
   } else {
     left = rect.left + rect.width / 2 - TOOLTIP_W / 2;
   }
-  left = Math.max(
-    VIEWPORT_PAD,
-    Math.min(left, window.innerWidth - TOOLTIP_W - VIEWPORT_PAD),
-  );
+  left = Math.max(VIEWPORT_PAD, Math.min(left, window.innerWidth - TOOLTIP_W - VIEWPORT_PAD));
 
   // Arrow always points at the horizontal centre of the parent.
   const parentCenterX = rect.left + rect.width / 2;
-  const arrowOffset = Math.max(
-    20,
-    Math.min(parentCenterX - left, TOOLTIP_W - 20),
-  );
+  const arrowOffset = Math.max(20, Math.min(parentCenterX - left, TOOLTIP_W - 20));
 
   const style: React.CSSProperties = {
     position: "fixed",
@@ -163,12 +154,8 @@ export function CoachMark({
           </button>
         </div>
 
-        <p className="text-sm font-semibold text-white">
-          {title}
-        </p>
-        <p className="mt-1 text-xs leading-relaxed text-white/75">
-          {description}
-        </p>
+        <p className="text-sm font-semibold text-white">{title}</p>
+        <p className="mt-1 text-xs leading-relaxed text-white/75">{description}</p>
       </div>
 
       {/* Arrow (points down toward target) */}

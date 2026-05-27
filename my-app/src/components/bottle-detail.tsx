@@ -11,15 +11,7 @@ import { FavoriteToggle } from "@/components/favorite-toggle";
 import { cn } from "@/lib/utils";
 import { WearLogList } from "@/components/wear-log-list";
 import { MarkdownContent } from "@/components/markdown-content";
-import {
-  Pencil,
-  Trash2,
-  Plus,
-  Droplets,
-  Calendar,
-  MessageSquare,
-  ArrowLeft,
-} from "lucide-react";
+import { Pencil, Trash2, Plus, Droplets, Calendar, MessageSquare, ArrowLeft } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { getApiErrorMessage } from "@/lib/utils";
@@ -70,10 +62,7 @@ export function BottleDetail({
   const ratedLogs = logs?.filter((l) => l.rating !== undefined) ?? [];
   const avgRating =
     ratedLogs.length > 0
-      ? (
-        ratedLogs.reduce((sum, l) => sum + (l.rating as number), 0) /
-        ratedLogs.length
-      ).toFixed(1)
+      ? (ratedLogs.reduce((sum, l) => sum + (l.rating as number), 0) / ratedLogs.length).toFixed(1)
       : null;
 
   const handleDelete = async () => {
@@ -111,9 +100,7 @@ export function BottleDetail({
             <h2 className="font-display text-2xl font-bold text-text leading-tight">
               {bottle.name}
             </h2>
-            {bottle.brand && (
-              <p className="text-sm text-text-secondary mt-1.5">{bottle.brand}</p>
-            )}
+            {bottle.brand && <p className="text-sm text-text-secondary mt-1.5">{bottle.brand}</p>}
           </div>
           <div className="flex items-center gap-2 shrink-0">
             <FavoriteToggle
@@ -141,7 +128,7 @@ export function BottleDetail({
                 "h-10 transition-all duration-300 ease-out shrink-0 overflow-hidden relative gap-0 border",
                 confirmDelete
                   ? "w-[116px] px-4 border-transparent"
-                  : "w-10 px-0 justify-center border-red-500/25 bg-red-500/10 text-red-400 hover:bg-red-500/20"
+                  : "w-10 px-0 justify-center border-red-500/25 bg-red-500/10 text-red-400 hover:bg-red-500/20",
               )}
             >
               <Trash2 className="h-4 w-4 shrink-0 z-10" />
@@ -149,7 +136,7 @@ export function BottleDetail({
                 aria-hidden="true"
                 className={cn(
                   "overflow-hidden transition-all duration-300 ease-out whitespace-nowrap text-sm flex items-center z-10",
-                  confirmDelete ? "w-[60px] ml-1.5 opacity-100" : "w-0 ml-0 opacity-0"
+                  confirmDelete ? "w-[60px] ml-1.5 opacity-100" : "w-0 ml-0 opacity-0",
                 )}
               >
                 Confirm
@@ -182,15 +169,9 @@ export function BottleDetail({
             {totalWears} wear{totalWears !== 1 ? "s" : ""}
           </div>
           {totalSprays > 0 && (
-            <div className="text-sm text-text-secondary">
-              {totalSprays} total sprays
-            </div>
+            <div className="text-sm text-text-secondary">{totalSprays} total sprays</div>
           )}
-          {avgRating && (
-            <div className="text-sm text-accent font-medium">
-              {avgRating}/10 avg
-            </div>
-          )}
+          {avgRating && <div className="text-sm text-accent font-medium">{avgRating}/10 avg</div>}
         </div>
 
         {/* Comments */}
@@ -212,9 +193,7 @@ export function BottleDetail({
 
       {/* Wear log section */}
       <div className="flex items-center justify-between px-7 pb-3">
-        <h3 className="font-display text-lg font-semibold text-text">
-          Wear History
-        </h3>
+        <h3 className="font-display text-lg font-semibold text-text">Wear History</h3>
         <div className={cn("relative", onboardingStep === "log-wear" && "z-50")}>
           <Button
             onClick={onAddWearLog}

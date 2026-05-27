@@ -34,17 +34,16 @@ export function BottleCard({
 
   // Track whether the entrance animation has played so DOM reorders
   // (from favoriting / pin-favorites) never replay it.
-  const hasAnimated = useRef(false);
-  // Dummy state toggle – the sole purpose is to force a re-render after
-  // flipping `hasAnimated` so the ref read in the JSX below picks it up.
-  const [, rerender] = useState(0);
+  const [hasAnimated, setHasAnimated] = useState(false);
 
-  const handleAnimationEnd = useCallback((e: React.AnimationEvent) => {
-    if (e.animationName === "fadeUp" && !hasAnimated.current) {
-      hasAnimated.current = true;
-      rerender((n) => n + 1);
-    }
-  }, []);
+  const handleAnimationEnd = useCallback(
+    (e: React.AnimationEvent) => {
+      if (e.animationName === "fadeUp" && !hasAnimated) {
+        setHasAnimated(true);
+      }
+    },
+    [hasAnimated],
+  );
 
   const sizerRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -94,8 +93,8 @@ export function BottleCard({
       className={cn(
         "group w-full h-full flex flex-col text-left rounded-xl border px-6 py-5 transition-all duration-200 ease-smooth cursor-pointer",
         "group-hover:shadow-md",
-        !hasAnimated.current && "animate-fade-up",
-        !hasAnimated.current && staggerClass,
+        !hasAnimated && "animate-fade-up",
+        !hasAnimated && staggerClass,
         isSelected
           ? "border-accent bg-accent-subtle/60 shadow-sm"
           : "border-border bg-surface group-hover:border-border-hover",
@@ -108,9 +107,7 @@ export function BottleCard({
             {bottle.name}
           </h3>
           {bottle.brand && (
-            <p className="text-sm text-text-secondary mt-1 truncate">
-              {bottle.brand}
-            </p>
+            <p className="text-sm text-text-secondary mt-1 truncate">{bottle.brand}</p>
           )}
         </div>
         {bottle.sizeMl && (
@@ -132,16 +129,12 @@ export function BottleCard({
             </div>
           )}
           {totalSprays !== undefined && totalSprays > 0 && (
-            <div className="text-xs text-text-secondary">
-              {totalSprays} sprays
-            </div>
+            <div className="text-xs text-text-secondary">{totalSprays} sprays</div>
           )}
           {avgRating != null && avgRating > 0 && (
             <div className="flex items-center gap-1 text-xs text-text-secondary">
               <Star className="h-3 w-3 fill-current" />
-              <span>
-                {avgRating % 1 === 0 ? avgRating.toFixed(0) : avgRating.toFixed(1)}
-              </span>
+              <span>{avgRating % 1 === 0 ? avgRating.toFixed(0) : avgRating.toFixed(1)}</span>
             </div>
           )}
         </div>
@@ -157,7 +150,12 @@ export function BottleCard({
               tabIndex={-1}
             >
               {tags.map((tag) => (
-                <Badge key={tag} data-tag variant="tag" className="text-[10px] px-2 py-0.5 shrink-0">
+                <Badge
+                  key={tag}
+                  data-tag
+                  variant="tag"
+                  className="text-[10px] px-2 py-0.5 shrink-0"
+                >
                   {tag}
                 </Badge>
               ))}

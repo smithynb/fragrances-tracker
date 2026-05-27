@@ -130,7 +130,7 @@ export function AddWearLogDialog({
           hour12: false,
           hour: "2-digit",
           minute: "2-digit",
-        })
+        }),
       );
       setSprays("3");
       setContext("");
@@ -183,12 +183,16 @@ export function AddWearLogDialog({
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Log a Wear</DialogTitle>
-          <DialogDescription>
-            Record when you wore this fragrance.
-          </DialogDescription>
+          <DialogDescription>Record when you wore this fragrance.</DialogDescription>
         </DialogHeader>
 
-        <form ref={formRef} onSubmit={handleSubmit} onKeyDown={handleFormKeyDown} noValidate className="space-y-5">
+        <form
+          ref={formRef}
+          onSubmit={handleSubmit}
+          onKeyDown={handleFormKeyDown}
+          noValidate
+          className="space-y-5"
+        >
           {/* Date + Time side by side */}
           <div className="grid grid-cols-2 gap-4">
             <div className="relative space-y-2">
@@ -241,9 +245,7 @@ export function AddWearLogDialog({
                   clearError("wornAt");
                 }}
                 className={
-                  errors.wornAt
-                    ? "border-danger focus:border-danger focus:ring-danger"
-                    : ""
+                  errors.wornAt ? "border-danger focus:border-danger focus:ring-danger" : ""
                 }
                 aria-invalid={!!errors.wornAt}
                 aria-describedby="worn-at-error"
@@ -269,9 +271,7 @@ export function AddWearLogDialog({
                 max={MAX_SPRAYS}
                 required
                 className={
-                  errors.sprays
-                    ? "border-danger focus:border-danger focus:ring-danger"
-                    : ""
+                  errors.sprays ? "border-danger focus:border-danger focus:ring-danger" : ""
                 }
                 aria-invalid={!!errors.sprays}
                 aria-describedby="sprays-error"
@@ -300,9 +300,7 @@ export function AddWearLogDialog({
                 max="10"
                 placeholder="Optional"
                 className={
-                  errors.rating
-                    ? "border-danger focus:border-danger focus:ring-danger"
-                    : ""
+                  errors.rating ? "border-danger focus:border-danger focus:ring-danger" : ""
                 }
                 aria-invalid={!!errors.rating}
                 aria-describedby="rating-error"
@@ -322,9 +320,7 @@ export function AddWearLogDialog({
             <Label>Context</Label>
             <Select
               value={context || NO_CONTEXT_VALUE}
-              onValueChange={(value) =>
-                setContext(value === NO_CONTEXT_VALUE ? "" : value)
-              }
+              onValueChange={(value) => setContext(value === NO_CONTEXT_VALUE ? "" : value)}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Select occasion..." />
@@ -357,15 +353,14 @@ export function AddWearLogDialog({
 
           <DialogFooter>
             {formError && (
-              <p role="alert" className="w-full rounded-lg border border-danger/30 bg-danger/5 px-3 py-2.5 text-sm text-danger">
+              <p
+                role="alert"
+                className="w-full rounded-lg border border-danger/30 bg-danger/5 px-3 py-2.5 text-sm text-danger"
+              >
                 {formError}
               </p>
             )}
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-            >
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
             <Button type="submit" disabled={submitting} aria-keyshortcuts="Control+Enter">

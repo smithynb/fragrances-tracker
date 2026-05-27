@@ -16,8 +16,7 @@ vi.mock("sonner", () => ({
   },
 }));
 
-const helperText =
-  "Markdown supported: **bold**, *italic*, [link text](url), - lists";
+const helperText = "Markdown supported: **bold**, *italic*, [link text](url), - lists";
 
 const noop = () => {};
 
@@ -40,13 +39,7 @@ describe("comment editor guidance", () => {
   });
 
   test("shows markdown guidance in the new wear-log editor", () => {
-    render(
-      <AddWearLogDialog
-        open
-        onOpenChange={noop}
-        bottleId={"bottle_1" as Id<"bottles">}
-      />,
-    );
+    render(<AddWearLogDialog open onOpenChange={noop} bottleId={"bottle_1" as Id<"bottles">} />);
     expect(screen.getByText(helperText)).toBeInTheDocument();
   });
 
