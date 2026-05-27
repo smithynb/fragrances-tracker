@@ -103,7 +103,7 @@ export function MarkdownContent({ content, collapsible = false, className }: Mar
         <button
           type="button"
           onClick={() => setCollapsed((prev) => !prev)}
-          className="mt-1.5 w-full text-left text-xs text-accent/60 hover:text-accent transition-colors cursor-pointer relative before:absolute before:-inset-y-3 before:-left-8 before:-right-[9999px]"
+          className="mt-1.5 w-full text-left text-xs text-accent/60 hover:text-accent transition-colors cursor-pointer relative before:absolute before:-top-3 before:-bottom-[100vh] before:-left-[100vw] before:-right-[100vw]"
         >
           {collapsed ? "Show more" : "Show less"}
         </button>
