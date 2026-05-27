@@ -107,7 +107,7 @@ export function BottleDetail({
               bottleId={bottle._id}
               isFavorite={bottle.isFavorite ?? false}
               size="detail"
-              className="border border-white/15 bg-white/8 hover:bg-white/15 transition-colors"
+              className="border border-white/15 bg-white/8 hover:bg-white/15"
             />
             <Button
               variant="ghost"
