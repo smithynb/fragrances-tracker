@@ -47,7 +47,9 @@ export function MarkdownContent({ content, collapsible = false, className }: Mar
   useEffect(() => {
     // When not collapsible, `isClickable` is already false so overflow state
     // is irrelevant — skip measurement entirely.
-    if (!collapsible) return;
+    // When not collapsed (i.e. expanded), skip measurement so that `overflows`
+    // keeps its previous `true` value and the "Show less" button stays visible.
+    if (!collapsible || !collapsed) return;
     const el = contentRef.current;
     if (!el) return;
 
@@ -66,7 +68,7 @@ export function MarkdownContent({ content, collapsible = false, className }: Mar
       cancelAnimationFrame(frame);
       observer.disconnect();
     };
-  }, [content, collapsible]);
+  }, [content, collapsible, collapsed]);
 
   const isClickable = collapsible && overflows;
 
@@ -101,7 +103,7 @@ export function MarkdownContent({ content, collapsible = false, className }: Mar
         <button
           type="button"
           onClick={() => setCollapsed((prev) => !prev)}
-          className="mt-1.5 w-full text-left text-xs text-accent/60 hover:text-accent transition-colors cursor-pointer relative before:absolute before:-inset-y-3 before:-left-8 before:-right-2"
+          className="mt-1.5 w-full text-left text-xs text-accent/60 hover:text-accent transition-colors cursor-pointer relative before:absolute before:-inset-y-3 before:-left-8 before:-right-[9999px]"
         >
           {collapsed ? "Show more" : "Show less"}
         </button>

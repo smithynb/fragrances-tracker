@@ -91,7 +91,7 @@ export function WearLogList({ logs }: WearLogListProps) {
             {dateLogs.map((log, i) => (
               <div
                 key={log._id}
-                className="group flex items-start gap-3 p-4 rounded-lg border border-border/50 bg-surface hover:border-border transition-all duration-200 animate-fade-up"
+                className="group flex items-start gap-3 p-4 rounded-lg border border-border/50 bg-surface hover:border-border transition-all duration-200 animate-fade-up overflow-hidden"
                 style={{ animationDelay: `${(groupIdx * dateLogs.length + i) * 0.05}s` }}
               >
                 {/* Timeline dot */}
@@ -123,7 +123,7 @@ export function WearLogList({ logs }: WearLogListProps) {
                   </div>
 
                   {log.comment && (
-                    <div className="flex items-start gap-1.5 mt-2">
+                    <div className="flex items-start gap-1.5 mt-2 min-w-0">
                       <MessageSquare className="h-3 w-3 text-text-secondary/50 mt-0.5 shrink-0" />
                       <MarkdownContent
                         content={log.comment}

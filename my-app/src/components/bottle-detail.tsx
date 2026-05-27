@@ -176,7 +176,7 @@ export function BottleDetail({
 
         {/* Comments */}
         {bottle.comments && (
-          <div className="flex items-start gap-2.5 mt-5 p-4 rounded-lg bg-surface-alt">
+          <div className="flex items-start gap-2.5 mt-5 p-4 rounded-lg bg-surface-alt overflow-hidden">
             <MessageSquare className="h-4 w-4 text-text-secondary mt-0.5 shrink-0" />
             <MarkdownContent
               content={bottle.comments}
