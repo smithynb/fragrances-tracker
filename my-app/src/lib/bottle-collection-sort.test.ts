@@ -260,6 +260,68 @@ describe("filterAndSortBottles", () => {
     ).toEqual(["Zoologist Bee"]);
   });
 
+  test("filters by multiple terms across searchable fields", () => {
+    expect(
+      names(
+        filterAndSortBottles({
+          bottles,
+          bottleStats: stats,
+          search: "  AMBER   hon ",
+          sortBy: "name",
+          sortDir: "asc",
+        }),
+      ),
+    ).toEqual(["Zoologist Bee"]);
+
+    expect(
+      names(
+        filterAndSortBottles({
+          bottles,
+          bottleStats: stats,
+          search: "zoologist amber",
+          sortBy: "name",
+          sortDir: "asc",
+        }),
+      ),
+    ).toEqual(["Zoologist Bee"]);
+
+    expect(
+      names(
+        filterAndSortBottles({
+          bottles,
+          bottleStats: stats,
+          search: "parma citrus",
+          sortBy: "name",
+          sortDir: "asc",
+        }),
+      ),
+    ).toEqual(["Acqua di Parma"]);
+
+    expect(
+      names(
+        filterAndSortBottles({
+          bottles,
+          bottleStats: stats,
+          search: "parma acqua",
+          sortBy: "name",
+          sortDir: "asc",
+        }),
+      ),
+    ).toEqual(["Acqua di Parma"]);
+
+    expect(
+      names(
+        filterAndSortBottles({
+          bottles,
+          bottleStats: stats,
+          search: "amber citrus",
+          sortBy: "name",
+          sortDir: "asc",
+        }),
+      ),
+    ).toEqual([]);
+  });
+
   test("combines filtering with non-default sort orders", () => {
     const result = filterAndSortBottles({
       bottles,
