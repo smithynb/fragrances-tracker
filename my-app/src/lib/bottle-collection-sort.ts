@@ -24,16 +24,36 @@ function compareFallback(a: BottleCollectionItem, b: BottleCollectionItem): numb
   return compareNames(a, b) || compareCreatedDesc(a, b) || a._id.localeCompare(b._id);
 }
 
-function matchesSearch(bottle: BottleCollectionItem, rawSearch: string): boolean {
-  const search = rawSearch.trim().toLowerCase();
-  if (!search) return true;
+type SearchQuery = {
+  terms: string[];
+};
 
-  return (
-    bottle.name.toLowerCase().includes(search) ||
-    bottle.brand?.toLowerCase().includes(search) ||
-    bottle.tags?.some((tag) => tag.toLowerCase().includes(search)) ||
-    false
-  );
+function getSearchQuery(rawSearch: string): SearchQuery {
+  return {
+    terms: rawSearch.trim().toLowerCase().match(/\S+/g) ?? [],
+  };
+}
+
+function matchesSearch(bottle: BottleCollectionItem, searchQuery: SearchQuery): boolean {
+  const { terms } = searchQuery;
+  if (terms.length === 0) return true;
+
+  const name = bottle.name.toLowerCase();
+  const brand = bottle.brand?.toLowerCase();
+
+  return terms.every((term) => {
+    if (name.includes(term) || (brand?.includes(term) ?? false)) return true;
+
+    if (!bottle.tags || bottle.tags.length === 0) return false;
+
+    for (const tag of bottle.tags) {
+      if (tag.toLowerCase().includes(term)) {
+        return true;
+      }
+    }
+
+    return false;
+  });
 }
 
 export function getBottleStats(bottleStats: BottleStatsMap | undefined, bottleId: string) {
@@ -73,7 +93,11 @@ export function filterAndSortBottles({
   sortDir: SortDir;
   pinFavorites?: boolean;
 }): BottleCollectionItem[] {
-  const filtered = bottles.filter((bottle) => matchesSearch(bottle, search));
+  const searchQuery = getSearchQuery(search);
+  const filtered =
+    searchQuery.terms.length === 0
+      ? bottles
+      : bottles.filter((bottle) => matchesSearch(bottle, searchQuery));
   const dir = sortDir === "asc" ? 1 : -1;
 
   const baseComparator = (a: BottleCollectionItem, b: BottleCollectionItem): number => {
