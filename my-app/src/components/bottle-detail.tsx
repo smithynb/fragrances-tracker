@@ -11,7 +11,7 @@ import { FavoriteToggle } from "@/components/favorite-toggle";
 import { cn } from "@/lib/utils";
 import { WearLogList } from "@/components/wear-log-list";
 import { MarkdownContent } from "@/components/markdown-content";
-import { Pencil, Trash2, Plus, Droplets, Calendar, MessageSquare, ArrowLeft } from "lucide-react";
+import { Pencil, Trash2, Plus, Droplets, Calendar, MessageSquare, ArrowLeft, Star } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { getApiErrorMessage } from "@/lib/utils";
@@ -171,7 +171,12 @@ export function BottleDetail({
           {totalSprays > 0 && (
             <div className="text-sm text-text-secondary">{totalSprays} total sprays</div>
           )}
-          {avgRating && <div className="text-sm text-accent font-medium">{avgRating}/10 avg</div>}
+          {avgRating && (
+            <div className="flex items-center gap-1 text-sm text-accent font-medium">
+              <Star className="h-3.5 w-3.5 fill-current" />
+              {avgRating}/10
+            </div>
+          )}
         </div>
 
         {/* Comments */}
