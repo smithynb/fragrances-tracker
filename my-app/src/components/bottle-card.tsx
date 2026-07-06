@@ -4,7 +4,7 @@ import { useRef, useState, useLayoutEffect, useCallback } from "react";
 import { Doc } from "../../convex/_generated/dataModel";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { Droplets, Star } from "lucide-react";
+import { Droplets } from "lucide-react";
 
 const EMPTY_TAGS: string[] = [];
 
@@ -12,9 +12,7 @@ interface BottleCardProps {
   bottle: Doc<"bottles">;
   isSelected: boolean;
   onClick: () => void;
-  totalSprays?: number;
   totalWears?: number;
-  avgRating?: number | null;
   index: number;
   className?: string;
 }
@@ -23,9 +21,7 @@ export function BottleCard({
   bottle,
   isSelected,
   onClick,
-  totalSprays,
   totalWears,
-  avgRating,
   index,
   className: extraClassName,
 }: BottleCardProps) {
@@ -118,26 +114,14 @@ export function BottleCard({
       </div>
 
       <div className="mt-auto">
-        {/* Stats row */}
-        <div className="flex items-center gap-4 mt-3.5">
-          {totalWears !== undefined && totalWears > 0 && (
-            <div className="flex items-center gap-1 text-xs text-text-secondary">
-              <Droplets className="h-3 w-3" />
-              <span>
-                {totalWears} wear{totalWears !== 1 ? "s" : ""}
-              </span>
-            </div>
-          )}
-          {totalSprays !== undefined && totalSprays > 0 && (
-            <div className="text-xs text-text-secondary">{totalSprays} sprays</div>
-          )}
-          {avgRating != null && avgRating > 0 && (
-            <div className="flex items-center gap-1 text-xs text-text-secondary">
-              <Star className="h-3 w-3 fill-current" />
-              <span>{avgRating % 1 === 0 ? avgRating.toFixed(0) : avgRating.toFixed(1)}</span>
-            </div>
-          )}
-        </div>
+        {totalWears !== undefined && (
+          <div className="mt-3.5 flex items-center gap-1 whitespace-nowrap text-xs text-text-secondary">
+            <Droplets className="h-3 w-3 shrink-0" />
+            <span>
+              {totalWears} wear{totalWears !== 1 ? "s" : ""}
+            </span>
+          </div>
+        )}
 
         {/* Tags */}
         {tags.length > 0 && (

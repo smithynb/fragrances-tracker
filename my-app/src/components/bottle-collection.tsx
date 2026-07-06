@@ -295,9 +295,7 @@ export function BottleCollection({
                   bottle={bottle}
                   isSelected={selectedBottleId === bottle._id}
                   onClick={() => onSelectBottle(bottle._id)}
-                  totalSprays={stats?.sprays}
-                  totalWears={stats?.wears}
-                  avgRating={stats?.avgRating ?? null}
+                  totalWears={bottleStats ? stats.wears : undefined}
                   index={i}
                   className={showCoachMark ? "coach-pulse" : undefined}
                 />
