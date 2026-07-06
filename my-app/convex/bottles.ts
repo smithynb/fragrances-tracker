@@ -2,6 +2,7 @@ import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { getOptionalUserId, getOwnedDoc, getUserId } from "./helpers";
 import { rateLimiter } from "./rateLimits";
+import { buildPatch } from "./patch";
 
 // ── Validation helpers ────────────────────────────────────────────────────────
 // HTML min/max attributes are client-side only and trivially bypassed, so we
@@ -127,26 +128,16 @@ export const updateBottle = mutation({
     }
     assertValidBottleInput(args);
 
-    // Build the patch explicitly so that:
-    //   undefined  → field is omitted (no change)
-    //   null       → field is set to undefined in the patch (clears it from the document)
-    //   <value>    → field is updated to that value
-    const patch: {
-      name?: string;
-      brand?: string;
-      sizeMl?: number;
-      tags?: string[];
-      comments?: string;
-      updatedAt: number;
-    } = { updatedAt: Date.now() };
-
-    if (args.name !== undefined) patch.name = args.name;
-    if (args.brand !== undefined) patch.brand = args.brand ?? undefined;
-    if (args.sizeMl !== undefined) patch.sizeMl = args.sizeMl ?? undefined;
-    if (args.tags !== undefined) patch.tags = args.tags ?? undefined;
-    if (args.comments !== undefined) patch.comments = args.comments ?? undefined;
-
-    await ctx.db.patch(args.bottleId, patch);
+    await ctx.db.patch(args.bottleId, {
+      ...buildPatch({
+        name: args.name,
+        brand: args.brand,
+        sizeMl: args.sizeMl,
+        tags: args.tags,
+        comments: args.comments,
+      }),
+      updatedAt: Date.now(),
+    });
   },
 });
 

@@ -3,6 +3,7 @@ import { v } from "convex/values";
 import { getOptionalUserId, getOwnedDoc, getUserId } from "./helpers";
 import { rateLimiter } from "./rateLimits";
 import { MAX_SPRAYS } from "../src/lib/constants";
+import { buildPatch } from "./patch";
 
 // ── Validation constants ──────────────────────────────────────────────────────
 
@@ -135,6 +136,18 @@ function assertValidRating(rating: number): void {
   }
 }
 
+function assertValidWearLogStrings(args: {
+  comment?: string | null;
+  context?: string | null;
+}): void {
+  if (args.comment != null && args.comment.length > MAX_COMMENT_LENGTH) {
+    throw new Error(`Comment must be at most ${MAX_COMMENT_LENGTH} characters.`);
+  }
+  if (args.context != null && args.context.length > MAX_CONTEXT_LENGTH) {
+    throw new Error(`Context must be at most ${MAX_CONTEXT_LENGTH} characters.`);
+  }
+}
+
 // ── Mutations ─────────────────────────────────────────────────────────────────
 
 export const addWearLog = mutation({
@@ -158,12 +171,7 @@ export const addWearLog = mutation({
     await getOwnedDoc(ctx, "bottles", args.bottleId, userId);
 
     // Validate string lengths server-side (HTML max is client-only).
-    if (args.comment && args.comment.length > MAX_COMMENT_LENGTH) {
-      throw new Error(`Comment must be at most ${MAX_COMMENT_LENGTH} characters.`);
-    }
-    if (args.context && args.context.length > MAX_CONTEXT_LENGTH) {
-      throw new Error(`Context must be at most ${MAX_CONTEXT_LENGTH} characters.`);
-    }
+    assertValidWearLogStrings(args);
 
     return await ctx.db.insert("wearLogs", {
       userId,
@@ -200,40 +208,18 @@ export const updateWearLog = mutation({
     await getOwnedDoc(ctx, "wearLogs", args.wearLogId, userId);
 
     // Validate string lengths server-side.
-    if (
-      args.comment !== undefined &&
-      args.comment !== null &&
-      args.comment.length > MAX_COMMENT_LENGTH
-    ) {
-      throw new Error(`Comment must be at most ${MAX_COMMENT_LENGTH} characters.`);
-    }
-    if (
-      args.context !== undefined &&
-      args.context !== null &&
-      args.context.length > MAX_CONTEXT_LENGTH
-    ) {
-      throw new Error(`Context must be at most ${MAX_CONTEXT_LENGTH} characters.`);
-    }
+    assertValidWearLogStrings(args);
 
-    // Build the patch explicitly so that:
-    //   undefined  → field is omitted (no change)
-    //   null       → field is set to undefined in the patch (clears it from the document)
-    //   <value>    → field is updated to that value
-    const patch: {
-      wornAt?: number;
-      sprays?: number;
-      context?: string;
-      rating?: number;
-      comment?: string;
-    } = {};
-
-    if (args.wornAt !== undefined) patch.wornAt = args.wornAt;
-    if (args.sprays !== undefined) patch.sprays = args.sprays;
-    if (args.context !== undefined) patch.context = args.context ?? undefined;
-    if (args.rating !== undefined) patch.rating = args.rating ?? undefined;
-    if (args.comment !== undefined) patch.comment = args.comment ?? undefined;
-
-    await ctx.db.patch(args.wearLogId, patch);
+    await ctx.db.patch(
+      args.wearLogId,
+      buildPatch({
+        wornAt: args.wornAt,
+        sprays: args.sprays,
+        context: args.context,
+        rating: args.rating,
+        comment: args.comment,
+      }),
+    );
   },
 });
 
