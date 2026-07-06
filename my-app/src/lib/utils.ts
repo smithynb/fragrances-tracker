@@ -5,16 +5,16 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+export function isFutureWornAtError(err: unknown): boolean {
+  return err instanceof Error && err.message.includes("wornAt cannot be in the future");
+}
+
 /**
  * Maps API/mutation errors to user-friendly messages.
  * Recognizes rate-limit errors (ConvexError from @convex-dev/rate-limiter)
  * and network/offline errors; falls back to a generic message for everything
  * else.  Raw error details are only logged in non-production environments.
  */
-export function isFutureWornAtError(err: unknown): boolean {
-  return err instanceof Error && err.message.includes("wornAt cannot be in the future");
-}
-
 export function getApiErrorMessage(err: unknown): string {
   // Rate-limit errors thrown by @convex-dev/rate-limiter with throws:true
   // arrive as a ConvexError whose .data has { kind: "RateLimited", retryAfter }
@@ -41,4 +41,15 @@ export function getApiErrorMessage(err: unknown): string {
   }
 
   return "Something went wrong. Please try again.";
+}
+
+/**
+ * Dev-logs the raw error and returns the user-facing message for it.
+ * Callers decide how to surface the message (toast, form banner, field error).
+ */
+export function reportApiError(err: unknown, logLabel: string): string {
+  if (process.env.NODE_ENV !== "production") {
+    console.error(logLabel, err);
+  }
+  return getApiErrorMessage(err);
 }

@@ -1,5 +1,5 @@
-import { describe, test, expect } from "vitest";
-import { getApiErrorMessage, isFutureWornAtError } from "./utils";
+import { describe, test, expect, vi, afterEach } from "vitest";
+import { getApiErrorMessage, isFutureWornAtError, reportApiError } from "./utils";
 
 describe("getApiErrorMessage", () => {
   test("returns a user-friendly message for future-date server errors", () => {
@@ -37,5 +37,26 @@ describe("getApiErrorMessage", () => {
   test("returns generic fallback for unknown errors", () => {
     const err = new Error("some unexpected internal error");
     expect(getApiErrorMessage(err)).toBe("Something went wrong. Please try again.");
+  });
+});
+
+describe("reportApiError", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  test("returns the mapped user-facing message", () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const err = new Error("Failed to fetch");
+    expect(reportApiError(err, "Failed to save:")).toBe(
+      "Network error. Please check your connection and try again.",
+    );
+  });
+
+  test("logs the raw error outside production", () => {
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const err = new Error("boom");
+    reportApiError(err, "Failed to save:");
+    expect(spy).toHaveBeenCalledWith("Failed to save:", err);
   });
 });

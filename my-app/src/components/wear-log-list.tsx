@@ -5,13 +5,12 @@ import { useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { cn } from "@/lib/utils";
+import { cn, reportApiError } from "@/lib/utils";
 import { EditWearLogDialog } from "@/components/edit-wear-log-dialog";
 import { MarkdownContent } from "@/components/markdown-content";
 import { Droplets, Calendar, Star, MessageSquare, Pencil, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-import { getApiErrorMessage } from "@/lib/utils";
 import { formatWearDate, formatWearTime } from "@/lib/format";
 
 interface WearLogListProps {
@@ -45,10 +44,7 @@ export function WearLogList({ logs }: WearLogListProps) {
       setDeletingId(null);
     } catch (err) {
       setDeletingId(null);
-      if (process.env.NODE_ENV !== "production") {
-        console.error("Failed to delete wear log:", err);
-      }
-      toast.error(getApiErrorMessage(err));
+      toast.error(reportApiError(err, "Failed to delete wear log:"));
     }
   };
 
