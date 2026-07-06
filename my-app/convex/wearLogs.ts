@@ -1,6 +1,6 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
-import { getOptionalUserId, getUserId } from "./helpers";
+import { getOptionalUserId, getOwnedDoc, getUserId } from "./helpers";
 import { rateLimiter } from "./rateLimits";
 import { MAX_SPRAYS } from "../src/lib/constants";
 
@@ -155,10 +155,7 @@ export const addWearLog = mutation({
     await rateLimiter.limit(ctx, "addWearLog", { key: userId, throws: true });
 
     // Verify the bottle belongs to this user.
-    const bottle = await ctx.db.get(args.bottleId);
-    if (!bottle || bottle.userId !== userId) {
-      throw new Error("Bottle not found or access denied.");
-    }
+    await getOwnedDoc(ctx, "bottles", args.bottleId, userId);
 
     // Validate string lengths server-side (HTML max is client-only).
     if (args.comment && args.comment.length > MAX_COMMENT_LENGTH) {
@@ -200,10 +197,7 @@ export const updateWearLog = mutation({
 
     const userId = await getUserId(ctx);
     await rateLimiter.limit(ctx, "updateWearLog", { key: userId, throws: true });
-    const log = await ctx.db.get(args.wearLogId);
-    if (!log || log.userId !== userId) {
-      throw new Error("Wear log not found or access denied.");
-    }
+    await getOwnedDoc(ctx, "wearLogs", args.wearLogId, userId);
 
     // Validate string lengths server-side.
     if (
@@ -248,10 +242,7 @@ export const deleteWearLog = mutation({
   handler: async (ctx, args) => {
     const userId = await getUserId(ctx);
     await rateLimiter.limit(ctx, "deleteWearLog", { key: userId, throws: true });
-    const log = await ctx.db.get(args.wearLogId);
-    if (!log || log.userId !== userId) {
-      throw new Error("Wear log not found or access denied.");
-    }
+    await getOwnedDoc(ctx, "wearLogs", args.wearLogId, userId);
     await ctx.db.delete(args.wearLogId);
   },
 });
