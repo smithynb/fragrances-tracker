@@ -16,13 +16,7 @@ const bottle = {
 describe("BottleCard", () => {
   test("uses wears as the card-level usage summary", () => {
     render(
-      <BottleCard
-        bottle={bottle}
-        isSelected={false}
-        onClick={vi.fn()}
-        totalWears={10}
-        index={0}
-      />,
+      <BottleCard bottle={bottle} isSelected={false} onClick={vi.fn()} totalWears={10} index={0} />,
     );
 
     expect(screen.getByText("10 wears")).toBeInTheDocument();

@@ -11,7 +11,16 @@ import { FavoriteToggle } from "@/components/favorite-toggle";
 import { cn } from "@/lib/utils";
 import { WearLogList } from "@/components/wear-log-list";
 import { MarkdownContent } from "@/components/markdown-content";
-import { Pencil, Trash2, Plus, Droplets, Calendar, MessageSquare, ArrowLeft, Star } from "lucide-react";
+import {
+  Pencil,
+  Trash2,
+  Plus,
+  Droplets,
+  Calendar,
+  MessageSquare,
+  ArrowLeft,
+  Star,
+} from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { getApiErrorMessage } from "@/lib/utils";
