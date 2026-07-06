@@ -15,11 +15,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Kbd, KbdGroup } from "@/components/ui/kbd";
+import { FormErrorBanner } from "@/components/form-error-banner";
+import { FormField } from "@/components/form-field";
+import { MarkdownHint } from "@/components/markdown-hint";
+import { SubmitButton } from "@/components/submit-button";
 import { useState, useEffect, useRef } from "react";
 import { X } from "lucide-react";
 import { toast } from "sonner";
-import { getApiErrorMessage } from "@/lib/utils";
+import { reportApiError } from "@/lib/utils";
+import { useCtrlEnterSubmit } from "@/lib/use-ctrl-enter-submit";
+import { useFormErrors } from "@/lib/use-form-errors";
 
 interface AddBottleDialogProps {
   open: boolean;
@@ -38,9 +43,9 @@ export function AddBottleDialog({ open, onOpenChange, editBottle }: AddBottleDia
   const [tags, setTags] = useState<string[]>([]);
   const [comments, setComments] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const [formError, setFormError] = useState<string | null>(null);
+  const { errors, setErrors, clearError, formError, setFormError, resetErrors } = useFormErrors();
   const formRef = useRef<HTMLFormElement>(null);
+  const handleFormKeyDown = useCtrlEnterSubmit(formRef, submitting);
 
   const isEditing = !!editBottle;
 
@@ -52,8 +57,7 @@ export function AddBottleDialog({ open, onOpenChange, editBottle }: AddBottleDia
       setTags(editBottle.tags ?? []);
       setTagInput("");
       setComments(editBottle.comments ?? "");
-      setErrors({});
-      setFormError(null);
+      resetErrors();
     } else if (open) {
       setName("");
       setBrand("");
@@ -61,19 +65,9 @@ export function AddBottleDialog({ open, onOpenChange, editBottle }: AddBottleDia
       setTags([]);
       setTagInput("");
       setComments("");
-      setErrors({});
-      setFormError(null);
+      resetErrors();
     }
-  }, [open, editBottle]);
-
-  const clearError = (field: string) => {
-    setErrors((prev) => {
-      if (!prev[field]) return prev;
-      const next = { ...prev };
-      delete next[field];
-      return next;
-    });
-  };
+  }, [open, editBottle, resetErrors]);
 
   const validate = (): boolean => {
     const newErrors: Record<string, string> = {};
@@ -100,28 +94,6 @@ export function AddBottleDialog({ open, onOpenChange, editBottle }: AddBottleDia
     if (e.key === "Enter" && !e.ctrlKey && !e.metaKey && !e.shiftKey) {
       e.preventDefault();
       handleAddTag();
-    }
-  };
-
-  const handleFormKeyDown = (e: React.KeyboardEvent<HTMLFormElement>) => {
-    if (e.key !== "Enter") return;
-
-    // Allow plain Enter in textareas (for newlines)
-    if ((e.target as HTMLElement).tagName === "TEXTAREA" && !e.ctrlKey) return;
-
-    // Ctrl+Enter: submit the form
-    if (e.ctrlKey && !e.shiftKey && !e.metaKey) {
-      if (submitting) return;
-      e.preventDefault();
-      formRef.current?.requestSubmit();
-      return;
-    }
-
-    // Block plain Enter from submitting the form only on text/number inputs.
-    // Buttons, Select triggers, and other interactive controls are left
-    // unaffected so keyboard users can activate them normally.
-    if ((e.target as HTMLElement).tagName === "INPUT") {
-      e.preventDefault();
     }
   };
 
@@ -157,10 +129,7 @@ export function AddBottleDialog({ open, onOpenChange, editBottle }: AddBottleDia
       }
       onOpenChange(false);
     } catch (err) {
-      if (process.env.NODE_ENV !== "production") {
-        console.error("Failed to save bottle:", err);
-      }
-      const message = getApiErrorMessage(err);
+      const message = reportApiError(err, "Failed to save bottle:");
       toast.error(message);
       setFormError(message);
     } finally {
@@ -187,69 +156,41 @@ export function AddBottleDialog({ open, onOpenChange, editBottle }: AddBottleDia
         >
           {/* Name + Brand side by side */}
           <div className="grid grid-cols-2 gap-4">
-            <div className="relative space-y-2">
-              <Label htmlFor="name" className={errors.name ? "text-danger" : ""}>
-                Name *
-              </Label>
-              <Input
-                id="name"
-                value={name}
-                onChange={(e) => {
-                  setName(e.target.value);
-                  clearError("name");
-                }}
-                placeholder="Aventus"
-                className={errors.name ? "border-danger focus:border-danger focus:ring-danger" : ""}
-                aria-invalid={!!errors.name}
-                aria-describedby="name-error"
-              />
-              <p
-                id="name-error"
-                role="alert"
-                className={`absolute -bottom-3 left-0 text-xs text-danger transition-opacity ${errors.name ? "opacity-100" : "opacity-0 pointer-events-none"}`}
-              >
-                {errors.name ?? "\u00A0"}
-              </p>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="brand">Brand</Label>
-              <Input
-                id="brand"
-                value={brand}
-                onChange={(e) => setBrand(e.target.value)}
-                placeholder="Creed"
-              />
-            </div>
+            <FormField
+              id="name"
+              label="Name *"
+              error={errors.name}
+              value={name}
+              onChange={(e) => {
+                setName(e.target.value);
+                clearError("name");
+              }}
+              placeholder="Aventus"
+            />
+            <FormField
+              id="brand"
+              label="Brand"
+              value={brand}
+              onChange={(e) => setBrand(e.target.value)}
+              placeholder="Creed"
+            />
           </div>
 
           {/* Size */}
-          <div className="relative space-y-2">
-            <Label htmlFor="size" className={errors.sizeMl ? "text-danger" : ""}>
-              Size (ml)
-            </Label>
-            <Input
-              id="size"
-              type="number"
-              value={sizeMl}
-              onChange={(e) => {
-                setSizeMl(e.target.value);
-                clearError("sizeMl");
-              }}
-              placeholder="100"
-              min="1"
-              step="1"
-              className={errors.sizeMl ? "border-danger focus:border-danger focus:ring-danger" : ""}
-              aria-invalid={!!errors.sizeMl}
-              aria-describedby="size-error"
-            />
-            <p
-              id="size-error"
-              role="alert"
-              className={`absolute top-full left-0 mt-1 text-xs text-danger transition-opacity ${errors.sizeMl ? "opacity-100" : "opacity-0 pointer-events-none"}`}
-            >
-              {errors.sizeMl ?? "\u00A0"}
-            </p>
-          </div>
+          <FormField
+            id="size"
+            label="Size (ml)"
+            error={errors.sizeMl}
+            type="number"
+            value={sizeMl}
+            onChange={(e) => {
+              setSizeMl(e.target.value);
+              clearError("sizeMl");
+            }}
+            placeholder="100"
+            min="1"
+            step="1"
+          />
 
           {/* Tags */}
           <div className="space-y-2">
@@ -304,45 +245,19 @@ export function AddBottleDialog({ open, onOpenChange, editBottle }: AddBottleDia
               placeholder="Personal thoughts, batch code, where purchased..."
               rows={3}
             />
-            <p className="text-xs text-text-secondary/50">
-              Markdown supported: **bold**, *italic*, [link text](url), - lists
-            </p>
+            <MarkdownHint />
           </div>
 
           <DialogFooter>
-            {formError && (
-              <p
-                role="alert"
-                className="w-full rounded-lg border border-danger/30 bg-danger/5 px-3 py-2.5 text-sm text-danger"
-              >
-                {formError}
-              </p>
-            )}
+            <FormErrorBanner message={formError} />
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button type="submit" disabled={submitting} aria-keyshortcuts="Control+Enter">
-              <span>
-                {submitting
-                  ? isEditing
-                    ? "Saving..."
-                    : "Adding..."
-                  : isEditing
-                    ? "Save Changes"
-                    : "Add Fragrance"}
-              </span>
-              {!submitting && (
-                <KbdGroup aria-hidden="true" className="ml-1">
-                  <Kbd className="border-white/20 bg-white/14 text-white shadow-[inset_0_-1px_0_rgba(255,255,255,0.18)]">
-                    Ctrl
-                  </Kbd>
-                  <span className="text-white/65">+</span>
-                  <Kbd className="border-white/20 bg-white/14 text-white shadow-[inset_0_-1px_0_rgba(255,255,255,0.18)]">
-                    ⏎
-                  </Kbd>
-                </KbdGroup>
-              )}
-            </Button>
+            <SubmitButton
+              submitting={submitting}
+              label={isEditing ? "Save Changes" : "Add Fragrance"}
+              busyLabel={isEditing ? "Saving..." : "Adding..."}
+            />
           </DialogFooter>
         </form>
       </DialogContent>
