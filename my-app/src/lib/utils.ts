@@ -13,7 +13,7 @@ export function isFutureWornAtError(err: unknown): boolean {
  * Maps API/mutation errors to user-friendly messages.
  * Recognizes rate-limit errors (ConvexError from @convex-dev/rate-limiter)
  * and network/offline errors; falls back to a generic message for everything
- * else.  Raw error details are only logged in non-production environments.
+ * else.
  */
 export function getApiErrorMessage(err: unknown): string {
   // Rate-limit errors thrown by @convex-dev/rate-limiter with throws:true
