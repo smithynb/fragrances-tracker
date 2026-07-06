@@ -12,6 +12,7 @@ import { Droplets, Calendar, Star, MessageSquare, Pencil, Trash2 } from "lucide-
 import { useState } from "react";
 import { toast } from "sonner";
 import { getApiErrorMessage } from "@/lib/utils";
+import { formatWearDate, formatWearTime } from "@/lib/format";
 
 interface WearLogListProps {
   logs: Doc<"wearLogs">[];
@@ -51,23 +52,6 @@ export function WearLogList({ logs }: WearLogListProps) {
     }
   };
 
-  const formatDate = (timestamp: number) => {
-    const d = new Date(timestamp);
-    return d.toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: d.getFullYear() !== new Date().getFullYear() ? "numeric" : undefined,
-    });
-  };
-
-  const formatTime = (timestamp: number) => {
-    const d = new Date(timestamp);
-    return d.toLocaleTimeString("en-US", {
-      hour: "numeric",
-      minute: "2-digit",
-    });
-  };
-
   // Group logs by date
   const grouped = logs.reduce(
     (acc, log) => {
@@ -85,7 +69,7 @@ export function WearLogList({ logs }: WearLogListProps) {
         <div key={dateKey}>
           {groupIdx > 0 && <Separator className="mb-5" />}
           <p className="text-xs font-medium text-text-secondary uppercase tracking-wider mb-3">
-            {formatDate(dateLogs[0].wornAt)}
+            {formatWearDate(dateLogs[0].wornAt)}
           </p>
           <div className="space-y-3">
             {dateLogs.map((log, i) => (
@@ -106,7 +90,7 @@ export function WearLogList({ logs }: WearLogListProps) {
                       </span>
                     </div>
 
-                    <span className="text-xs text-text-secondary">{formatTime(log.wornAt)}</span>
+                    <span className="text-xs text-text-secondary">{formatWearTime(log.wornAt)}</span>
 
                     {log.context && (
                       <span className="text-xs text-text-secondary bg-surface-alt px-2.5 py-1 rounded-md">
