@@ -87,7 +87,9 @@ export function WearLogList({ logs }: WearLogListProps) {
                       </span>
                     </div>
 
-                    <span className="text-xs text-text-secondary">{formatWearTime(log.wornAt)}</span>
+                    <span className="text-xs text-text-secondary">
+                      {formatWearTime(log.wornAt)}
+                    </span>
 
                     {log.context && (
                       <span className="text-xs text-text-secondary bg-surface-alt px-2.5 py-1 rounded-md">

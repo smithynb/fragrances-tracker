@@ -7,7 +7,14 @@ describe("FormField", () => {
   test("wires label, input, and passthrough props", async () => {
     const onChange = vi.fn();
     render(
-      <FormField id="sprays" label="Sprays *" type="number" value="3" onChange={onChange} min="1" />,
+      <FormField
+        id="sprays"
+        label="Sprays *"
+        type="number"
+        value="3"
+        onChange={onChange}
+        min="1"
+      />,
     );
     const input = screen.getByLabelText("Sprays *");
     expect(input).toHaveValue(3);
@@ -18,7 +25,13 @@ describe("FormField", () => {
 
   test("shows the error state", () => {
     render(
-      <FormField id="sprays" label="Sprays *" error="Must be between 1 and 100" value="" onChange={() => {}} />,
+      <FormField
+        id="sprays"
+        label="Sprays *"
+        error="Must be between 1 and 100"
+        value=""
+        onChange={() => {}}
+      />,
     );
     const input = screen.getByLabelText("Sprays *");
     expect(input).toHaveAttribute("aria-invalid", "true");

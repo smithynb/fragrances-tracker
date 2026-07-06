@@ -4,7 +4,13 @@ import { useRef } from "react";
 import { describe, expect, test, vi } from "vitest";
 import { useCtrlEnterSubmit } from "./use-ctrl-enter-submit";
 
-function TestForm({ submitting = false, onSubmit }: { submitting?: boolean; onSubmit: () => void }) {
+function TestForm({
+  submitting = false,
+  onSubmit,
+}: {
+  submitting?: boolean;
+  onSubmit: () => void;
+}) {
   const formRef = useRef<HTMLFormElement>(null);
   const handleKeyDown = useCtrlEnterSubmit(formRef, submitting);
   return (
