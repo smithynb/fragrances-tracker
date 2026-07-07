@@ -6,7 +6,7 @@ import { useMutation } from "convex/react";
 import type { OptimisticLocalStore } from "convex/browser";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
-import { cn, getApiErrorMessage } from "@/lib/utils";
+import { cn, reportApiError } from "@/lib/utils";
 import { toast } from "sonner";
 
 interface FavoriteToggleProps {
@@ -63,10 +63,7 @@ export function FavoriteToggle({
     try {
       await toggleFavorite({ bottleId });
     } catch (err) {
-      if (process.env.NODE_ENV !== "production") {
-        console.error("Failed to toggle favorite:", err);
-      }
-      toast.error(getApiErrorMessage(err));
+      toast.error(reportApiError(err, "Failed to toggle favorite:"));
       // Convex auto-rolls back the optimistic patch on rejection.
     }
   };

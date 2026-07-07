@@ -12,23 +12,20 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Kbd, KbdGroup } from "@/components/ui/kbd";
+import { ContextSelect } from "@/components/context-select";
+import { FormErrorBanner } from "@/components/form-error-banner";
+import { FormField } from "@/components/form-field";
+import { MarkdownHint } from "@/components/markdown-hint";
+import { SubmitButton } from "@/components/submit-button";
 import { useState, useEffect, useRef } from "react";
 import { toast } from "sonner";
-import { getApiErrorMessage } from "@/lib/utils";
-import { MAX_SPRAYS, CONTEXT_OPTIONS } from "@/lib/constants";
-
-const NO_CONTEXT_VALUE = "__none__";
+import { reportApiError } from "@/lib/utils";
+import { useCtrlEnterSubmit } from "@/lib/use-ctrl-enter-submit";
+import { useFormErrors } from "@/lib/use-form-errors";
+import { formatWearDate, formatWearTime } from "@/lib/format";
+import { MAX_SPRAYS } from "@/lib/constants";
 
 interface EditWearLogDialogProps {
   open: boolean;
@@ -44,18 +41,9 @@ export function EditWearLogDialog({ open, onOpenChange, log }: EditWearLogDialog
   const [rating, setRating] = useState("");
   const [comment, setComment] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const [formError, setFormError] = useState<string | null>(null);
+  const { errors, setErrors, clearError, formError, setFormError, resetErrors } = useFormErrors();
   const formRef = useRef<HTMLFormElement>(null);
-
-  const clearError = (field: string) => {
-    setErrors((prev) => {
-      if (!prev[field]) return prev;
-      const next = { ...prev };
-      delete next[field];
-      return next;
-    });
-  };
+  const handleFormKeyDown = useCtrlEnterSubmit(formRef, submitting);
 
   const validate = (): boolean => {
     const newErrors: Record<string, string> = {};
@@ -73,26 +61,6 @@ export function EditWearLogDialog({ open, onOpenChange, log }: EditWearLogDialog
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleFormKeyDown = (e: React.KeyboardEvent<HTMLFormElement>) => {
-    if (e.key !== "Enter") return;
-
-    // Allow plain Enter in textareas (for newlines)
-    if ((e.target as HTMLElement).tagName === "TEXTAREA" && !e.ctrlKey) return;
-
-    // Ctrl+Enter: submit the form
-    if (e.ctrlKey && !e.shiftKey && !e.metaKey) {
-      if (submitting) return;
-      e.preventDefault();
-      formRef.current?.requestSubmit();
-      return;
-    }
-
-    // Block plain Enter from submitting the form only on text/number inputs.
-    if ((e.target as HTMLElement).tagName === "INPUT") {
-      e.preventDefault();
-    }
-  };
-
   // Pre-populate form fields from the log when the dialog opens
   useEffect(() => {
     if (open) {
@@ -100,10 +68,9 @@ export function EditWearLogDialog({ open, onOpenChange, log }: EditWearLogDialog
       setContext(log.context ?? "");
       setRating(log.rating !== undefined ? String(log.rating) : "");
       setComment(log.comment ?? "");
-      setErrors({});
-      setFormError(null);
+      resetErrors();
     }
-  }, [open, log]);
+  }, [open, log, resetErrors]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -121,33 +88,12 @@ export function EditWearLogDialog({ open, onOpenChange, log }: EditWearLogDialog
       toast.success("Wear log updated");
       onOpenChange(false);
     } catch (err) {
-      if (process.env.NODE_ENV !== "production") {
-        console.error("Failed to update wear log:", err);
-      }
-      const message = getApiErrorMessage(err);
+      const message = reportApiError(err, "Failed to update wear log:");
       toast.error(message);
       setFormError(message);
     } finally {
       setSubmitting(false);
     }
-  };
-
-  const formatReadOnlyDate = (timestamp: number) => {
-    const d = new Date(timestamp);
-    return d.toLocaleDateString("en-US", {
-      weekday: "short",
-      month: "short",
-      day: "numeric",
-      year: d.getFullYear() !== new Date().getFullYear() ? "numeric" : undefined,
-    });
-  };
-
-  const formatReadOnlyTime = (timestamp: number) => {
-    const d = new Date(timestamp);
-    return d.toLocaleTimeString("en-US", {
-      hour: "numeric",
-      minute: "2-digit",
-    });
   };
 
   return (
@@ -170,99 +116,50 @@ export function EditWearLogDialog({ open, onOpenChange, log }: EditWearLogDialog
             <div className="space-y-2">
               <Label className="text-text-secondary/60">Date</Label>
               <div className="flex h-10 w-full items-center rounded-xl border border-border/40 bg-surface-alt/50 px-4 text-sm text-text-secondary/60 select-none cursor-not-allowed">
-                {formatReadOnlyDate(log.wornAt)}
+                {formatWearDate(log.wornAt, { weekday: true })}
               </div>
             </div>
             <div className="space-y-2">
               <Label className="text-text-secondary/60">Time</Label>
               <div className="flex h-10 w-full items-center rounded-xl border border-border/40 bg-surface-alt/50 px-4 text-sm text-text-secondary/60 select-none cursor-not-allowed">
-                {formatReadOnlyTime(log.wornAt)}
+                {formatWearTime(log.wornAt)}
               </div>
             </div>
           </div>
 
           {/* Sprays + Rating side by side */}
           <div className="grid grid-cols-2 gap-4">
-            <div className="relative space-y-2">
-              <Label htmlFor="edit-sprays" className={errors.sprays ? "text-danger" : ""}>
-                Sprays *
-              </Label>
-              <Input
-                id="edit-sprays"
-                type="number"
-                value={sprays}
-                onChange={(e) => {
-                  setSprays(e.target.value);
-                  clearError("sprays");
-                }}
-                min="1"
-                max={MAX_SPRAYS}
-                required
-                className={
-                  errors.sprays ? "border-danger focus:border-danger focus:ring-danger" : ""
-                }
-                aria-invalid={!!errors.sprays}
-                aria-describedby="edit-sprays-error"
-              />
-              <p
-                id="edit-sprays-error"
-                role="alert"
-                className={`absolute -bottom-3 left-0 text-xs text-danger transition-opacity ${errors.sprays ? "opacity-100" : "opacity-0 pointer-events-none"}`}
-              >
-                {errors.sprays ?? "\u00A0"}
-              </p>
-            </div>
-            <div className="relative space-y-2">
-              <Label htmlFor="edit-rating" className={errors.rating ? "text-danger" : ""}>
-                Rating (1-10)
-              </Label>
-              <Input
-                id="edit-rating"
-                type="number"
-                value={rating}
-                onChange={(e) => {
-                  setRating(e.target.value);
-                  clearError("rating");
-                }}
-                min="1"
-                max="10"
-                placeholder="Optional"
-                className={
-                  errors.rating ? "border-danger focus:border-danger focus:ring-danger" : ""
-                }
-                aria-invalid={!!errors.rating}
-                aria-describedby="edit-rating-error"
-              />
-              <p
-                id="edit-rating-error"
-                role="alert"
-                className={`absolute -bottom-3 left-0 text-xs text-danger transition-opacity ${errors.rating ? "opacity-100" : "opacity-0 pointer-events-none"}`}
-              >
-                {errors.rating ?? "\u00A0"}
-              </p>
-            </div>
+            <FormField
+              id="edit-sprays"
+              label="Sprays *"
+              error={errors.sprays}
+              type="number"
+              value={sprays}
+              onChange={(e) => {
+                setSprays(e.target.value);
+                clearError("sprays");
+              }}
+              min="1"
+              max={MAX_SPRAYS}
+              required
+            />
+            <FormField
+              id="edit-rating"
+              label="Rating (1-10)"
+              error={errors.rating}
+              type="number"
+              value={rating}
+              onChange={(e) => {
+                setRating(e.target.value);
+                clearError("rating");
+              }}
+              min="1"
+              max="10"
+              placeholder="Optional"
+            />
           </div>
 
-          {/* Context */}
-          <div className="space-y-2">
-            <Label>Context</Label>
-            <Select
-              value={context || NO_CONTEXT_VALUE}
-              onValueChange={(value) => setContext(value === NO_CONTEXT_VALUE ? "" : value)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select occasion..." />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={NO_CONTEXT_VALUE}>No context</SelectItem>
-                {CONTEXT_OPTIONS.map((opt) => (
-                  <SelectItem key={opt} value={opt}>
-                    {opt}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          <ContextSelect value={context} onChange={setContext} />
 
           {/* Comment */}
           <div className="space-y-2">
@@ -274,37 +171,15 @@ export function EditWearLogDialog({ open, onOpenChange, log }: EditWearLogDialog
               placeholder="Performance comments, compliments received..."
               rows={2}
             />
-            <p className="text-xs text-text-secondary/50">
-              Markdown supported: **bold**, *italic*, [link text](url), - lists
-            </p>
+            <MarkdownHint />
           </div>
 
           <DialogFooter>
-            {formError && (
-              <p
-                role="alert"
-                className="w-full rounded-lg border border-danger/30 bg-danger/5 px-3 py-2.5 text-sm text-danger"
-              >
-                {formError}
-              </p>
-            )}
+            <FormErrorBanner message={formError} />
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button type="submit" disabled={submitting} aria-keyshortcuts="Control+Enter">
-              <span>{submitting ? "Saving..." : "Save Changes"}</span>
-              {!submitting && (
-                <KbdGroup aria-hidden="true" className="ml-1">
-                  <Kbd className="border-white/20 bg-white/14 text-white shadow-[inset_0_-1px_0_rgba(255,255,255,0.18)]">
-                    Ctrl
-                  </Kbd>
-                  <span className="text-white/65">+</span>
-                  <Kbd className="border-white/20 bg-white/14 text-white shadow-[inset_0_-1px_0_rgba(255,255,255,0.18)]">
-                    ⏎
-                  </Kbd>
-                </KbdGroup>
-              )}
-            </Button>
+            <SubmitButton submitting={submitting} label="Save Changes" busyLabel="Saving..." />
           </DialogFooter>
         </form>
       </DialogContent>

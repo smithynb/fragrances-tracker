@@ -1,7 +1,8 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
-import { getOptionalUserId, getUserId } from "./helpers";
+import { getOptionalUserId, getOwnedDoc, getUserId } from "./helpers";
 import { rateLimiter } from "./rateLimits";
+import { buildPatch } from "./patch";
 
 // ── Validation helpers ────────────────────────────────────────────────────────
 // HTML min/max attributes are client-side only and trivially bypassed, so we
@@ -119,10 +120,7 @@ export const updateBottle = mutation({
   handler: async (ctx, args) => {
     const userId = await getUserId(ctx);
     await rateLimiter.limit(ctx, "updateBottle", { key: userId, throws: true });
-    const bottle = await ctx.db.get(args.bottleId);
-    if (!bottle || bottle.userId !== userId) {
-      throw new Error("Bottle not found or access denied.");
-    }
+    await getOwnedDoc(ctx, "bottles", args.bottleId, userId);
 
     // Validate sizeMl when a real value (not a clear) is being set.
     if (args.sizeMl !== undefined && args.sizeMl !== null && args.sizeMl <= 0) {
@@ -130,26 +128,16 @@ export const updateBottle = mutation({
     }
     assertValidBottleInput(args);
 
-    // Build the patch explicitly so that:
-    //   undefined  → field is omitted (no change)
-    //   null       → field is set to undefined in the patch (clears it from the document)
-    //   <value>    → field is updated to that value
-    const patch: {
-      name?: string;
-      brand?: string;
-      sizeMl?: number;
-      tags?: string[];
-      comments?: string;
-      updatedAt: number;
-    } = { updatedAt: Date.now() };
-
-    if (args.name !== undefined) patch.name = args.name;
-    if (args.brand !== undefined) patch.brand = args.brand ?? undefined;
-    if (args.sizeMl !== undefined) patch.sizeMl = args.sizeMl ?? undefined;
-    if (args.tags !== undefined) patch.tags = args.tags ?? undefined;
-    if (args.comments !== undefined) patch.comments = args.comments ?? undefined;
-
-    await ctx.db.patch(args.bottleId, patch);
+    await ctx.db.patch(args.bottleId, {
+      ...buildPatch({
+        name: args.name,
+        brand: args.brand,
+        sizeMl: args.sizeMl,
+        tags: args.tags,
+        comments: args.comments,
+      }),
+      updatedAt: Date.now(),
+    });
   },
 });
 
@@ -158,10 +146,7 @@ export const deleteBottle = mutation({
   handler: async (ctx, args) => {
     const userId = await getUserId(ctx);
     await rateLimiter.limit(ctx, "deleteBottle", { key: userId, throws: true });
-    const bottle = await ctx.db.get(args.bottleId);
-    if (!bottle || bottle.userId !== userId) {
-      throw new Error("Bottle not found or access denied.");
-    }
+    await getOwnedDoc(ctx, "bottles", args.bottleId, userId);
 
     // Cascade-delete all wear logs that reference this bottle so no orphaned
     // records are left behind after the bottle document is removed.
@@ -185,10 +170,7 @@ export const toggleFavorite = mutation({
       throws: true,
     });
 
-    const bottle = await ctx.db.get(args.bottleId);
-    if (!bottle || bottle.userId !== userId) {
-      throw new Error("Bottle not found or access denied.");
-    }
+    const bottle = await getOwnedDoc(ctx, "bottles", args.bottleId, userId);
 
     // Intentionally do NOT touch updatedAt — favoriting is metadata, not a
     // content edit. Keeps any future "last modified" view honest.

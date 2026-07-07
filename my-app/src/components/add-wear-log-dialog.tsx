@@ -15,20 +15,17 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Kbd, KbdGroup } from "@/components/ui/kbd";
+import { ContextSelect } from "@/components/context-select";
+import { FormErrorBanner } from "@/components/form-error-banner";
+import { FormField } from "@/components/form-field";
+import { MarkdownHint } from "@/components/markdown-hint";
+import { SubmitButton } from "@/components/submit-button";
 import { useState, useEffect, useRef } from "react";
 import { toast } from "sonner";
-import { getApiErrorMessage, isFutureWornAtError } from "@/lib/utils";
-import { MAX_SPRAYS, CONTEXT_OPTIONS } from "@/lib/constants";
-
-const NO_CONTEXT_VALUE = "__none__";
+import { isFutureWornAtError, reportApiError } from "@/lib/utils";
+import { useCtrlEnterSubmit } from "@/lib/use-ctrl-enter-submit";
+import { useFormErrors } from "@/lib/use-form-errors";
+import { MAX_SPRAYS } from "@/lib/constants";
 
 function getWornAtTimestamp(date: string, time: string): number {
   if (!date) return NaN;
@@ -63,18 +60,9 @@ export function AddWearLogDialog({
   const [rating, setRating] = useState("");
   const [comment, setComment] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const [formError, setFormError] = useState<string | null>(null);
+  const { errors, setErrors, clearError, formError, setFormError, resetErrors } = useFormErrors();
   const formRef = useRef<HTMLFormElement>(null);
-
-  const clearError = (field: string) => {
-    setErrors((prev) => {
-      if (!prev[field]) return prev;
-      const next = { ...prev };
-      delete next[field];
-      return next;
-    });
-  };
+  const handleFormKeyDown = useCtrlEnterSubmit(formRef, submitting);
 
   const validate = (): boolean => {
     const newErrors: Record<string, string> = {};
@@ -99,28 +87,6 @@ export function AddWearLogDialog({
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleFormKeyDown = (e: React.KeyboardEvent<HTMLFormElement>) => {
-    if (e.key !== "Enter") return;
-
-    // Allow plain Enter in textareas (for newlines)
-    if ((e.target as HTMLElement).tagName === "TEXTAREA" && !e.ctrlKey) return;
-
-    // Ctrl+Enter: submit the form
-    if (e.ctrlKey && !e.shiftKey && !e.metaKey) {
-      if (submitting) return;
-      e.preventDefault();
-      formRef.current?.requestSubmit();
-      return;
-    }
-
-    // Block plain Enter from submitting the form only on text/number inputs.
-    // Buttons, Select triggers, and other interactive controls are left
-    // unaffected so keyboard users can activate them normally.
-    if ((e.target as HTMLElement).tagName === "INPUT") {
-      e.preventDefault();
-    }
-  };
-
   useEffect(() => {
     if (open) {
       const now = new Date();
@@ -136,10 +102,9 @@ export function AddWearLogDialog({
       setContext("");
       setRating("");
       setComment("");
-      setErrors({});
-      setFormError(null);
+      resetErrors();
     }
-  }, [open]);
+  }, [open, resetErrors]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -163,10 +128,7 @@ export function AddWearLogDialog({
       onSuccess?.();
       onOpenChange(false);
     } catch (err) {
-      if (process.env.NODE_ENV !== "production") {
-        console.error("Failed to log wear:", err);
-      }
-      const message = getApiErrorMessage(err);
+      const message = reportApiError(err, "Failed to log wear:");
       if (isFutureWornAtError(err)) {
         setErrors({ wornAt: message });
       } else {
@@ -193,7 +155,9 @@ export function AddWearLogDialog({
           noValidate
           className="space-y-5"
         >
-          {/* Date + Time side by side */}
+          {/* Date + Time side by side. Kept bespoke (not FormField): the wornAt
+              error spans both fields, with two stacked error paragraphs and a
+              switching aria-describedby. */}
           <div className="grid grid-cols-2 gap-4">
             <div className="relative space-y-2">
               <Label htmlFor="date" className={errors.date || errors.wornAt ? "text-danger" : ""}>
@@ -222,14 +186,14 @@ export function AddWearLogDialog({
                 role="alert"
                 className={`absolute -bottom-3 left-0 text-xs text-danger transition-opacity ${errors.date && !errors.wornAt ? "opacity-100" : "opacity-0 pointer-events-none"}`}
               >
-                {errors.date ?? "\u00A0"}
+                {errors.date ?? " "}
               </p>
               <p
                 id="worn-at-error"
                 role="alert"
                 className={`absolute -bottom-3 left-0 whitespace-nowrap text-xs text-danger transition-opacity ${errors.wornAt ? "opacity-100" : "opacity-0 pointer-events-none"}`}
               >
-                {errors.wornAt ?? "\u00A0"}
+                {errors.wornAt ?? " "}
               </p>
             </div>
             <div className="relative space-y-2">
@@ -255,86 +219,37 @@ export function AddWearLogDialog({
 
           {/* Sprays + Rating side by side */}
           <div className="grid grid-cols-2 gap-4">
-            <div className="relative space-y-2">
-              <Label htmlFor="sprays" className={errors.sprays ? "text-danger" : ""}>
-                Sprays *
-              </Label>
-              <Input
-                id="sprays"
-                type="number"
-                value={sprays}
-                onChange={(e) => {
-                  setSprays(e.target.value);
-                  clearError("sprays");
-                }}
-                min="1"
-                max={MAX_SPRAYS}
-                required
-                className={
-                  errors.sprays ? "border-danger focus:border-danger focus:ring-danger" : ""
-                }
-                aria-invalid={!!errors.sprays}
-                aria-describedby="sprays-error"
-              />
-              <p
-                id="sprays-error"
-                role="alert"
-                className={`absolute -bottom-3 left-0 text-xs text-danger transition-opacity ${errors.sprays ? "opacity-100" : "opacity-0 pointer-events-none"}`}
-              >
-                {errors.sprays ?? "\u00A0"}
-              </p>
-            </div>
-            <div className="relative space-y-2">
-              <Label htmlFor="rating" className={errors.rating ? "text-danger" : ""}>
-                Rating (1-10)
-              </Label>
-              <Input
-                id="rating"
-                type="number"
-                value={rating}
-                onChange={(e) => {
-                  setRating(e.target.value);
-                  clearError("rating");
-                }}
-                min="1"
-                max="10"
-                placeholder="Optional"
-                className={
-                  errors.rating ? "border-danger focus:border-danger focus:ring-danger" : ""
-                }
-                aria-invalid={!!errors.rating}
-                aria-describedby="rating-error"
-              />
-              <p
-                id="rating-error"
-                role="alert"
-                className={`absolute -bottom-3 left-0 text-xs text-danger transition-opacity ${errors.rating ? "opacity-100" : "opacity-0 pointer-events-none"}`}
-              >
-                {errors.rating ?? "\u00A0"}
-              </p>
-            </div>
+            <FormField
+              id="sprays"
+              label="Sprays *"
+              error={errors.sprays}
+              type="number"
+              value={sprays}
+              onChange={(e) => {
+                setSprays(e.target.value);
+                clearError("sprays");
+              }}
+              min="1"
+              max={MAX_SPRAYS}
+              required
+            />
+            <FormField
+              id="rating"
+              label="Rating (1-10)"
+              error={errors.rating}
+              type="number"
+              value={rating}
+              onChange={(e) => {
+                setRating(e.target.value);
+                clearError("rating");
+              }}
+              min="1"
+              max="10"
+              placeholder="Optional"
+            />
           </div>
 
-          {/* Context */}
-          <div className="space-y-2">
-            <Label>Context</Label>
-            <Select
-              value={context || NO_CONTEXT_VALUE}
-              onValueChange={(value) => setContext(value === NO_CONTEXT_VALUE ? "" : value)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select occasion..." />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={NO_CONTEXT_VALUE}>No context</SelectItem>
-                {CONTEXT_OPTIONS.map((opt) => (
-                  <SelectItem key={opt} value={opt}>
-                    {opt}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          <ContextSelect value={context} onChange={setContext} />
 
           {/* Comment */}
           <div className="space-y-2">
@@ -346,37 +261,15 @@ export function AddWearLogDialog({
               placeholder="Performance comments, compliments received..."
               rows={2}
             />
-            <p className="text-xs text-text-secondary/50">
-              Markdown supported: **bold**, *italic*, [link text](url), - lists
-            </p>
+            <MarkdownHint />
           </div>
 
           <DialogFooter>
-            {formError && (
-              <p
-                role="alert"
-                className="w-full rounded-lg border border-danger/30 bg-danger/5 px-3 py-2.5 text-sm text-danger"
-              >
-                {formError}
-              </p>
-            )}
+            <FormErrorBanner message={formError} />
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button type="submit" disabled={submitting} aria-keyshortcuts="Control+Enter">
-              <span>{submitting ? "Logging..." : "Log Wear"}</span>
-              {!submitting && (
-                <KbdGroup aria-hidden="true" className="ml-1">
-                  <Kbd className="border-white/20 bg-white/14 text-white shadow-[inset_0_-1px_0_rgba(255,255,255,0.18)]">
-                    Ctrl
-                  </Kbd>
-                  <span className="text-white/65">+</span>
-                  <Kbd className="border-white/20 bg-white/14 text-white shadow-[inset_0_-1px_0_rgba(255,255,255,0.18)]">
-                    ⏎
-                  </Kbd>
-                </KbdGroup>
-              )}
-            </Button>
+            <SubmitButton submitting={submitting} label="Log Wear" busyLabel="Logging..." />
           </DialogFooter>
         </form>
       </DialogContent>

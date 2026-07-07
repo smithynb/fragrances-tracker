@@ -5,13 +5,14 @@ import { useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { cn } from "@/lib/utils";
+import { reportApiError } from "@/lib/utils";
+import { ConfirmDeleteButton } from "@/components/confirm-delete-button";
 import { EditWearLogDialog } from "@/components/edit-wear-log-dialog";
 import { MarkdownContent } from "@/components/markdown-content";
-import { Droplets, Calendar, Star, MessageSquare, Pencil, Trash2 } from "lucide-react";
+import { Droplets, Calendar, Star, MessageSquare, Pencil } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-import { getApiErrorMessage } from "@/lib/utils";
+import { formatWearDate, formatWearTime } from "@/lib/format";
 
 interface WearLogListProps {
   logs: Doc<"wearLogs">[];
@@ -44,28 +45,8 @@ export function WearLogList({ logs }: WearLogListProps) {
       setDeletingId(null);
     } catch (err) {
       setDeletingId(null);
-      if (process.env.NODE_ENV !== "production") {
-        console.error("Failed to delete wear log:", err);
-      }
-      toast.error(getApiErrorMessage(err));
+      toast.error(reportApiError(err, "Failed to delete wear log:"));
     }
-  };
-
-  const formatDate = (timestamp: number) => {
-    const d = new Date(timestamp);
-    return d.toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: d.getFullYear() !== new Date().getFullYear() ? "numeric" : undefined,
-    });
-  };
-
-  const formatTime = (timestamp: number) => {
-    const d = new Date(timestamp);
-    return d.toLocaleTimeString("en-US", {
-      hour: "numeric",
-      minute: "2-digit",
-    });
   };
 
   // Group logs by date
@@ -85,7 +66,7 @@ export function WearLogList({ logs }: WearLogListProps) {
         <div key={dateKey}>
           {groupIdx > 0 && <Separator className="mb-5" />}
           <p className="text-xs font-medium text-text-secondary uppercase tracking-wider mb-3">
-            {formatDate(dateLogs[0].wornAt)}
+            {formatWearDate(dateLogs[0].wornAt)}
           </p>
           <div className="space-y-3">
             {dateLogs.map((log, i) => (
@@ -106,7 +87,9 @@ export function WearLogList({ logs }: WearLogListProps) {
                       </span>
                     </div>
 
-                    <span className="text-xs text-text-secondary">{formatTime(log.wornAt)}</span>
+                    <span className="text-xs text-text-secondary">
+                      {formatWearTime(log.wornAt)}
+                    </span>
 
                     {log.context && (
                       <span className="text-xs text-text-secondary bg-surface-alt px-2.5 py-1 rounded-md">
@@ -145,31 +128,15 @@ export function WearLogList({ logs }: WearLogListProps) {
                   >
                     <Pencil className="h-3.5 w-3.5" />
                   </Button>
-                  <Button
-                    variant={deletingId === log._id ? "destructive" : "ghost"}
+                  <ConfirmDeleteButton
+                    confirming={deletingId === log._id}
                     onClick={() => handleDelete(log._id)}
                     onMouseLeave={() => setDeletingId(null)}
-                    aria-label={
-                      deletingId === log._id ? "Confirm delete wear log" : "Delete wear log"
-                    }
-                    className={cn(
-                      "h-8 transition-all duration-300 ease-out opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100 focus-visible:opacity-100 shrink-0 overflow-hidden relative gap-0",
-                      deletingId === log._id ? "w-[100px] px-3" : "w-8 px-0 justify-center",
-                    )}
-                  >
-                    <Trash2 className="h-3.5 w-3.5 shrink-0 z-10" />
-                    <span
-                      aria-hidden={deletingId !== log._id}
-                      className={cn(
-                        "overflow-hidden transition-all duration-300 ease-out whitespace-nowrap text-xs flex items-center z-10",
-                        deletingId === log._id
-                          ? "w-[56px] ml-1.5 opacity-100"
-                          : "w-0 ml-0 opacity-0",
-                      )}
-                    >
-                      Confirm
-                    </span>
-                  </Button>
+                    idleLabel="Delete wear log"
+                    confirmLabel="Confirm delete wear log"
+                    size="compact"
+                    className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100 focus-visible:opacity-100"
+                  />
                 </div>
               </div>
             ))}

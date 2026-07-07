@@ -7,23 +7,15 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { CoachMark } from "@/components/coach-mark";
+import { ConfirmDeleteButton } from "@/components/confirm-delete-button";
 import { FavoriteToggle } from "@/components/favorite-toggle";
 import { cn } from "@/lib/utils";
 import { WearLogList } from "@/components/wear-log-list";
 import { MarkdownContent } from "@/components/markdown-content";
-import {
-  Pencil,
-  Trash2,
-  Plus,
-  Droplets,
-  Calendar,
-  MessageSquare,
-  ArrowLeft,
-  Star,
-} from "lucide-react";
+import { Pencil, Plus, Droplets, Calendar, MessageSquare, ArrowLeft, Star } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-import { getApiErrorMessage } from "@/lib/utils";
+import { reportApiError } from "@/lib/utils";
 import { type OnboardingStep } from "@/lib/use-onboarding";
 
 interface BottleDetailProps {
@@ -84,10 +76,7 @@ export function BottleDetail({
       toast.success("Fragrance deleted");
       onClose();
     } catch (err) {
-      if (process.env.NODE_ENV !== "production") {
-        console.error("Failed to delete bottle:", err);
-      }
-      toast.error(getApiErrorMessage(err));
+      toast.error(reportApiError(err, "Failed to delete bottle:"));
       // Keep confirmDelete true so the user can retry without an extra click
     }
   };
@@ -128,29 +117,16 @@ export function BottleDetail({
             >
               <Pencil className="h-4 w-4" />
             </Button>
-            <Button
-              variant={confirmDelete ? "destructive" : "ghost"}
+            <ConfirmDeleteButton
+              confirming={confirmDelete}
               onClick={handleDelete}
               onMouseLeave={() => setConfirmDelete(false)}
-              aria-label={confirmDelete ? "Confirm delete" : `Delete ${bottle.name}`}
-              className={cn(
-                "h-10 transition-all duration-300 ease-out shrink-0 overflow-hidden relative gap-0 border",
-                confirmDelete
-                  ? "w-[116px] px-4 border-transparent"
-                  : "w-10 px-0 justify-center border-red-500/25 bg-red-500/10 text-red-400 hover:bg-red-500/20",
-              )}
-            >
-              <Trash2 className="h-4 w-4 shrink-0 z-10" />
-              <span
-                aria-hidden="true"
-                className={cn(
-                  "overflow-hidden transition-all duration-300 ease-out whitespace-nowrap text-sm flex items-center z-10",
-                  confirmDelete ? "w-[60px] ml-1.5 opacity-100" : "w-0 ml-0 opacity-0",
-                )}
-              >
-                Confirm
-              </span>
-            </Button>
+              idleLabel={`Delete ${bottle.name}`}
+              confirmLabel="Confirm delete"
+              className="border"
+              idleClassName="border-red-500/25 bg-red-500/10 text-red-400 hover:bg-red-500/20"
+              confirmingClassName="border-transparent"
+            />
           </div>
         </div>
 
