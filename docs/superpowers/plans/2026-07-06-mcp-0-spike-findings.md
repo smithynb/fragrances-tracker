@@ -5,10 +5,12 @@
 |---|---|
 | mcp-handler | 1.1.0 |
 | @modelcontextprotocol/sdk | 1.26.0 |
-| zod | 3.25.76 |
+| zod | **4.3.6** (see zod finding below — `^3` breaks the build) |
 | jose | 6.2.3 |
 
-**Note:** `mcp-handler@1.1.0` declares an **exact** non-optional peer `@modelcontextprotocol/sdk@1.26.0`. Installing `zod@^3 jose` alongside first pulled sdk `1.29.0` (bun warned: `incorrect peer dependency`). Downgraded sdk to `1.26.0` to match the peer and avoid two sdk instances in the module graph. zod resolved to `3.25.76` (major 3, satisfies sdk peer `^3.25 || ^4.0`). No `zod@^3.25` override needed.
+**Notes:**
+- `mcp-handler@1.1.0` declares an **exact** non-optional peer `@modelcontextprotocol/sdk@1.26.0`. Installing `zod jose` alongside first pulled sdk `1.29.0` (bun warned: `incorrect peer dependency`). Downgraded sdk to `1.26.0` to match the peer and avoid two sdk instances in the module graph.
+- zod was first pinned at `^3` (resolved 3.25.76) per the epic, but that **fails typecheck** — see the zod-version finding under "API surface". Re-pinned to `^4` (resolved 4.3.6), which the sdk peer `"^3.25 || ^4.0"` allows.
 
 ## API surface (each answer cites a node_modules path)
 
@@ -25,6 +27,21 @@
 4. **Tool callback = `(args, extra)`** where `extra: RequestHandlerExtra` carrying `authInfo?: AuthInfo` (`shared/protocol.d.ts:181`) → destructure `(args, { authInfo }) => …`. `AuthInfo` (`server/auth/types.d.ts`): `token`, `clientId`, `scopes: string[]`, `expiresAt?`, `resource?: URL`, **`extra?: Record<string, unknown>`** (passthrough field present in the type; runtime survival → Task 4).
 7. **`CallToolResult`** (`types.d.ts:2491-2593`): `content: [{type:"text", text:string} | image | audio | …]`, optional `isError?: boolean`, optional `structuredContent?`. Epic's `{ content:[{type:"text",text}], isError? }` return is accepted.
 8. **Route export:** handler is `(request: Request) => Promise<Response>` → `export { authed as GET, authed as POST }`. Stateless is the default (`sessionIdGenerator?: undefined`); no `DELETE` export needed (no session teardown in stateless streamable HTTP). SSE can be turned off via `disableSse: true`.
+
+### ⚠️ zod version (BLOCKER FOUND — corrects epic + this sub-plan Task 1)
+
+**`zod@^3` (resolved 3.25.76) breaks the build:** `registerTool` (and the deprecated `tool()`) both raise `TS2589: Type instantiation is excessively deep and possibly infinite` under `tsc 5.9.3` + `@modelcontextprotocol/sdk@1.26.0`. Reproduced with the canonical raw-shape form, the deprecated form, and an explicitly-typed shape — the deep instantiation is inside the SDK's own `zod-compat` generic machinery, not our call site. zod 3.25.x is the heavy "bridge" release.
+
+**Fix: pin `zod@^4` (resolved 4.3.6).** The SDK peer is `"^3.25 || ^4.0"`, so v4 is supported; the canonical `registerTool(name, {description, inputSchema:{...}}, cb)` then typechecks and builds clean. zod was not previously an app dependency (only the MCP surface uses it) → no cross-cutting risk. **Downstream: sub-plans 2–3 must author zod schemas with the v4 API** (watch `.nullable()` clearables, error/message options which changed from v3).
+
+### Walking-skeleton route behavior (Task 3, `src/app/api/[transport]/route.ts`)
+
+Dynamic `[transport]` segment + `basePath: "/api"` serves **`POST /api/mcp`**. Verified via curl against `bun dev` (no auth yet):
+
+- `tools/list` → **HTTP 200**, `content-type: text/event-stream`. Body is SSE-framed even for a one-shot POST: `event: message\ndata: {"result":{"tools":[…]},"jsonrpc":"2.0","id":1}`. **No prior `initialize` call and no `mcp-session-id` header required** in stateless mode. The zod shape is surfaced as JSON Schema draft-07 (`{type:"object",properties:{message:{type:"string"}},required:["message"]}`), and each tool carries `execution.taskSupport:"forbidden"`.
+- `tools/call` `ping{message:"hi"}` → `data: {"result":{"content":[{"type":"text","text":"pong: hi"}]},"jsonrpc":"2.0","id":2}`.
+- Clients MUST send `Accept: application/json, text/event-stream` (the SDK negotiates SSE framing).
+- MCP inspector (Task 3 step 4) not run — headless session, no browser; curl exercises the same JSON-RPC transport.
 
 ## Downstream plan corrections
 (filled by Task 6)
