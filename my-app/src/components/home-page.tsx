@@ -3,6 +3,7 @@
 import { useAuthActions } from "@convex-dev/auth/react";
 import { useState, useCallback, useEffect } from "react";
 import { useQuery } from "convex/react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { api } from "../../convex/_generated/api";
 import { Id, Doc } from "../../convex/_generated/dataModel";
@@ -13,7 +14,7 @@ import { AddBottleDialog } from "@/components/add-bottle-dialog";
 import { AddWearLogDialog } from "@/components/add-wear-log-dialog";
 import { Button } from "@/components/ui/button";
 import { useOnboarding, ONBOARDING_SETTLE_MS } from "@/lib/use-onboarding";
-import { LoaderCircle, LogOut, Wine } from "lucide-react";
+import { LoaderCircle, LogOut, Settings, Wine } from "lucide-react";
 
 export function HomePage() {
   const router = useRouter();
@@ -114,6 +115,11 @@ export function HomePage() {
         </div>
 
         <div className="flex items-center gap-2">
+          <Button asChild variant="ghost" size="sm" aria-label="Connections settings">
+            <Link href="/settings/connections">
+              <Settings className="h-4 w-4" />
+            </Link>
+          </Button>
           <ThemeToggle />
           <Button
             variant="outline"
