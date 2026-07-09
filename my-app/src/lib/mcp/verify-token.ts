@@ -68,6 +68,9 @@ export function createMcpTokenVerifier(deps: VerifierDeps = {}) {
       const { payload } = await jwtVerify(bearer, jwks, {
         issuer: deps.issuer ?? process.env.NEXT_PUBLIC_APP_URL,
         audience: MCP_JWT_AUDIENCE,
+        // Pin the algorithm: our tokens are always RS256. Defense-in-depth
+        // against alg-confusion (jose already refuses HS*/none for an RSA key).
+        algorithms: ["RS256"],
       });
       const [userId] = (payload.sub as string).split("|");
       return {

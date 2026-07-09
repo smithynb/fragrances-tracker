@@ -11,6 +11,8 @@
 import type * as apiTokens from "../apiTokens.js";
 import type * as auth from "../auth.js";
 import type * as bottles from "../bottles.js";
+import type * as cleanup from "../cleanup.js";
+import type * as crons from "../crons.js";
 import type * as devSeed from "../devSeed.js";
 import type * as helpers from "../helpers.js";
 import type * as http from "../http.js";
@@ -31,6 +33,8 @@ declare const fullApi: ApiFromModules<{
   apiTokens: typeof apiTokens;
   auth: typeof auth;
   bottles: typeof bottles;
+  cleanup: typeof cleanup;
+  crons: typeof crons;
   devSeed: typeof devSeed;
   helpers: typeof helpers;
   http: typeof http;
