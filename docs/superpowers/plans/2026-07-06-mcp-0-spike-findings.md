@@ -43,5 +43,15 @@ Dynamic `[transport]` segment + `basePath: "/api"` serves **`POST /api/mcp`**. V
 - Clients MUST send `Accept: application/json, text/event-stream` (the SDK negotiates SSE framing).
 - MCP inspector (Task 3 step 4) not run — headless session, no browser; curl exercises the same JSON-RPC transport.
 
+### `withMcpAuth` runtime behavior (Task 4)
+
+Wrapped the handler with `withMcpAuth(handler, verifyStub, { required: true, resourceMetadataPath: "/.well-known/oauth-protected-resource" })` and a stub verifier accepting only `Bearer test-token`.
+
+- **401 path (no/invalid bearer):** `HTTP/1.1 401 Unauthorized` with
+  `www-authenticate: Bearer error="invalid_token", error_description="No authorization provided", resource_metadata="http://localhost:3000/.well-known/oauth-protected-resource"`.
+  The header **includes `resource_metadata="…"`** pointing at `<origin>` + the configured `resourceMetadataPath` → epic discovery-flow step 1 works as designed. Origin is derived from proxy headers / request URL (`getPublicOrigin`).
+- **`authInfo.extra` PASSTHROUGH: PASS.** The tool callback received `authInfo.extra` intact: the `ping` echo returned `{"pong":"hi","extra":{"userId":"spike-user","convexToken":"spike-jwt"}}`. **The WeakMap fallback in the plan is NOT needed** — `verify-token.ts` can return `extra:{userId,convexToken}` and tool handlers read it directly via `(args, { authInfo }) => (authInfo!.extra as McpExtra)`.
+- Verifier signature confirmed at runtime: `(req: Request, bearerToken?: string) => AuthInfo | undefined | Promise<...>`; returning `undefined` yields the 401 above.
+
 ## Downstream plan corrections
 (filled by Task 6)

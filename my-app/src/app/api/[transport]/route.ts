@@ -1,5 +1,16 @@
-import { createMcpHandler } from 'mcp-handler';
+import { createMcpHandler, withMcpAuth } from 'mcp-handler';
 import { z } from 'zod';
+
+const verifyStub = async (_req: Request, bearer?: string) => {
+  if (bearer !== 'test-token') return undefined;
+
+  return {
+    token: bearer,
+    clientId: 'spike-client',
+    scopes: ['read', 'write'],
+    extra: { userId: 'spike-user', convexToken: 'spike-jwt' },
+  };
+};
 
 const handler = createMcpHandler(
   (server) => {
@@ -9,8 +20,16 @@ const handler = createMcpHandler(
         description: 'Health check. Echoes the message back.',
         inputSchema: { message: z.string() },
       },
-      async ({ message }) => ({
-        content: [{ type: 'text', text: `pong: ${message}` }],
+      async ({ message }, { authInfo }) => ({
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify({
+              pong: message,
+              extra: authInfo?.extra ?? null,
+            }),
+          },
+        ],
       }),
     );
   },
@@ -18,4 +37,9 @@ const handler = createMcpHandler(
   { basePath: '/api', maxDuration: 60, verboseLogs: true },
 );
 
-export { handler as GET, handler as POST };
+const authed = withMcpAuth(handler, verifyStub, {
+  required: true,
+  resourceMetadataPath: '/.well-known/oauth-protected-resource',
+});
+
+export { authed as GET, authed as POST };
