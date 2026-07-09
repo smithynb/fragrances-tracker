@@ -53,5 +53,11 @@ Wrapped the handler with `withMcpAuth(handler, verifyStub, { required: true, res
 - **`authInfo.extra` PASSTHROUGH: PASS.** The tool callback received `authInfo.extra` intact: the `ping` echo returned `{"pong":"hi","extra":{"userId":"spike-user","convexToken":"spike-jwt"}}`. **The WeakMap fallback in the plan is NOT needed** — `verify-token.ts` can return `extra:{userId,convexToken}` and tool handlers read it directly via `(args, { authInfo }) => (authInfo!.extra as McpExtra)`.
 - Verifier signature confirmed at runtime: `(req: Request, bearerToken?: string) => AuthInfo | undefined | Promise<...>`; returning `undefined` yields the 401 above.
 
+### jose RS256 sign/verify with local JWKS (Task 5, `scripts/spike-jose.mjs`)
+
+End-to-end recipe validated (epic §3.1 token strategy, minus Convex): `generateKeyPair('RS256',{extractable:true})` → `exportPKCS8` → round-trip `importPKCS8` → `exportJWK` (strip `d,p,q,dp,dq,qi`, add `kid/alg/use`) → `SignJWT(...).sign()` → `createLocalJWKSet` → `jwtVerify`. Final: `VERIFIED user123|mcp:grant456 spike read write`.
+
+**⚠️ Recipe correction (jose v6.2.3):** `importPKCS8(pkcs8, 'RS256')` returns a **non-extractable** `CryptoKey`, so the subsequent `exportJWK(signingKey)` throws `TypeError: non-extractable CryptoKey cannot be exported as a JWK`. Fix used and **required in sub-plan 2's `tokens.ts`**: `importPKCS8(pkcs8, 'RS256', { extractable: true })`. (Alternative for the app: derive the public JWK once at key-generation time and store it separately, so the runtime signing key can stay non-extractable — cleaner key hygiene. Either works; extractable-import is the minimal change.)
+
 ## Downstream plan corrections
 (filled by Task 6)
