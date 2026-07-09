@@ -60,4 +60,16 @@ End-to-end recipe validated (epic §3.1 token strategy, minus Convex): `generate
 **⚠️ Recipe correction (jose v6.2.3):** `importPKCS8(pkcs8, 'RS256')` returns a **non-extractable** `CryptoKey`, so the subsequent `exportJWK(signingKey)` throws `TypeError: non-extractable CryptoKey cannot be exported as a JWK`. Fix used and **required in sub-plan 2's `tokens.ts`**: `importPKCS8(pkcs8, 'RS256', { extractable: true })`. (Alternative for the app: derive the public JWK once at key-generation time and store it separately, so the runtime signing key can stay non-extractable — cleaner key hygiene. Either works; extractable-import is the minimal change.)
 
 ## Downstream plan corrections
-(filled by Task 6)
+
+| # | Assumption (epic/sub-plans) | Verified reality | Edit target |
+|---|---|---|---|
+| C1 | `zod@^3` (epic §6, this sub-plan Task 1) | `3.25.76` raises `TS2589` with sdk 1.26 `registerTool`; **`zod@^4` (4.3.6) builds clean** | epic §6 packages; sub-plans 2–3 author schemas with zod v4 API |
+| C2 | Tool registration `server.tool(name, desc, shape, cb)` (epic §3.4) | `tool()` is `@deprecated` AND also TS2589-prone; **use `server.registerTool(name, {description, inputSchema:{…}}, cb)`** | epic §3.4 code block; sub-plan 3 |
+| C3 | sdk "latest" implied | mcp-handler peer pins **exact `@modelcontextprotocol/sdk@1.26.0`**; pin it, don't float | epic §6; sub-plan 1 (done) |
+| C4 | Metadata routes "hand-roll" (epic risk #3) | Helpers ship: **`protectedResourceHandler` + `metadataCorsOptionsRequestHandler` + `generateProtectedResourceMetadata`**. Use them for the RFC 9728 route. RFC 8414 auth-server metadata has NO helper → still hand-rolled | epic §6 / risk #3; sub-plan 4 metadata routes |
+| C5 | `authInfo.extra` might not survive → WeakMap fallback (sub-plan 1 Task 4) | **`extra` survives passthrough** to tool callback. No WeakMap needed | sub-plan 3 `verify-token.ts` contract |
+| C6 | jose recipe `importPKCS8(pkcs8, alg)` (sub-plan 1 Task 5, epic §3.1) | Returns **non-extractable** key → `exportJWK` throws. Need **`importPKCS8(pkcs8, 'RS256', { extractable: true })`** (or derive public JWK at keygen) | sub-plan 2 `tokens.ts` |
+| C7 | Response body shape unspecified | Stateless streamable HTTP returns **`content-type: text/event-stream`** (SSE-framed `event: message\ndata: {...}`); clients MUST send `Accept: application/json, text/event-stream`; no `initialize`/`mcp-session-id` prereq | epic §8 curls already include the Accept header — no change, just noted |
+| C8 | 401 `WWW-Authenticate` must carry `resource_metadata` (epic flow step 1) | Confirmed verbatim: `Bearer error="invalid_token", …, resource_metadata="<origin>/.well-known/oauth-protected-resource"` | none (matches) |
+
+**Net:** two hard blockers fixed (C1 zod, C6 jose), one deprecation switch (C2), one nice-to-have (C4 helpers reduce hand-rolled code), one de-risk (C5 no WeakMap). Auth flow + token strategy validated end to end minus Convex.
