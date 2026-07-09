@@ -11,7 +11,20 @@
 **Note:** `mcp-handler@1.1.0` declares an **exact** non-optional peer `@modelcontextprotocol/sdk@1.26.0`. Installing `zod@^3 jose` alongside first pulled sdk `1.29.0` (bun warned: `incorrect peer dependency`). Downgraded sdk to `1.26.0` to match the peer and avoid two sdk instances in the module graph. zod resolved to `3.25.76` (major 3, satisfies sdk peer `^3.25 || ^4.0`). No `zod@^3.25` override needed.
 
 ## API surface (each answer cites a node_modules path)
-(filled by Tasks 2–5)
+
+### mcp-handler (`node_modules/mcp-handler/dist/index.d.ts`)
+
+1. **`createMcpHandler`** = re-export of `createMcpRouteHandler(initializeServer, serverOptions?, config?)` (`index.d.ts:121,209`). Setup callback receives an SDK `McpServer`. `Config` keys (`index.d.ts:45-106`): `basePath` ✓, `maxDuration` ✓ (default 60), `verboseLogs` ✓ (default false), `redisUrl?` (**optional**, defaults to `REDIS_URL`/`KV_URL` env), `onEvent?`, `disableSse?`, `sessionIdGenerator?: undefined`, plus deprecated `streamableHttpEndpoint`/`sseEndpoint`/`sseMessageEndpoint`. **Redis is NOT required → stateless streamable-HTTP works with an empty/omitted `redisUrl`.** Epic assumption holds.
+5. **`withMcpAuth(handler, verifyToken, opts)`** (`index.d.ts:128-142`). `verifyToken: (req: Request, bearerToken?: string) => AuthInfo | undefined | Promise<AuthInfo | undefined>`. Opts: `required?`, `resourceMetadataPath?`, `requiredScopes?`, `resourceUrl?`. Exported as both `withMcpAuth` and `experimental_withMcpAuth` (`index.d.ts:209`) — epic's `withMcpAuth` name is valid. Also augments global `Request` with `auth?: AuthInfo` (`index.d.ts:123-127`). Runtime 401 shape → Task 4.
+6. **Metadata helpers EXIST** (`index.d.ts:157-207`): `protectedResourceHandler({authServerUrls, resourceUrl?})`, `generateProtectedResourceMetadata({authServerUrls, resourceUrl, additionalMetadata?})`, `metadataCorsOptionsRequestHandler()`, plus `getPublicOrigin(req)`/`getPublicUrl(req)`. **Correction vs epic risk #3: the RFC 9728 protected-resource route need NOT be hand-rolled — use `protectedResourceHandler` + `metadataCorsOptionsRequestHandler`.** (No helper for RFC 8414 authorization-server metadata — that route stays hand-rolled.)
+
+### @modelcontextprotocol/sdk (`node_modules/@modelcontextprotocol/sdk/dist/esm/...`)
+
+2. **Registration: use `registerTool`.** Every `server.tool(...)` overload is `@deprecated Use registerTool instead` (`server/mcp.d.ts:110-146`). Non-deprecated: `registerTool(name, config, cb)` (`server/mcp.d.ts:150-157`). **Correction: epic §3.4 uses `server.tool(name, desc, shape, cb)` (deprecated) — switch to `registerTool`.**
+3. **`registerTool` config** (`server/mcp.d.ts:150-157`): `{ title?, description?, inputSchema?, outputSchema?, annotations?, _meta? }`. `inputSchema` is a zod **raw shape object** (`ZodRawShapeCompat`, e.g. `{ message: z.string() }`) — **not** `z.object(...)`. Callback arg is `ShapeOutput<Args>` (`server/mcp.d.ts:250`).
+4. **Tool callback = `(args, extra)`** where `extra: RequestHandlerExtra` carrying `authInfo?: AuthInfo` (`shared/protocol.d.ts:181`) → destructure `(args, { authInfo }) => …`. `AuthInfo` (`server/auth/types.d.ts`): `token`, `clientId`, `scopes: string[]`, `expiresAt?`, `resource?: URL`, **`extra?: Record<string, unknown>`** (passthrough field present in the type; runtime survival → Task 4).
+7. **`CallToolResult`** (`types.d.ts:2491-2593`): `content: [{type:"text", text:string} | image | audio | …]`, optional `isError?: boolean`, optional `structuredContent?`. Epic's `{ content:[{type:"text",text}], isError? }` return is accepted.
+8. **Route export:** handler is `(request: Request) => Promise<Response>` → `export { authed as GET, authed as POST }`. Stateless is the default (`sessionIdGenerator?: undefined`); no `DELETE` export needed (no session teardown in stateless streamable HTTP). SSE can be turned off via `disableSse: true`.
 
 ## Downstream plan corrections
 (filled by Task 6)
