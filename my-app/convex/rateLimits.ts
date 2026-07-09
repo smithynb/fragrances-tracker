@@ -15,6 +15,9 @@
  * │ addWearLog            │ token bucket│ 20/min, burst of 5                   │
  * │ updateWearLog         │ token bucket│ 20/min, burst of 5                   │
  * │ deleteWearLog         │ token bucket│ 20/min, burst of 5                   │
+ * │ oauthRegister         │ token bucket│ 5/hour, burst of 5                   │
+ * │ oauthTokenExchange    │ token bucket│ 30/min, burst of 10                  │
+ * │ createApiToken        │ token bucket│ 10/hour, burst of 3                  │
  * └───────────────────────┴─────────────┴──────────────────────────────────────┘
  *
  * ## How to adjust limits
@@ -42,7 +45,7 @@
  * error and can retry.
  */
 
-import { RateLimiter, MINUTE } from "@convex-dev/rate-limiter";
+import { RateLimiter, MINUTE, HOUR } from "@convex-dev/rate-limiter";
 import { components } from "./_generated/api";
 
 export const rateLimiter = new RateLimiter(components.rateLimiter, {
@@ -81,4 +84,10 @@ export const rateLimiter = new RateLimiter(components.rateLimiter, {
     period: MINUTE,
     capacity: 5,
   },
+
+  // ── MCP OAuth endpoints (keys are client IPs passed in from Next routes,
+  // except createApiToken which is per-user) ────────────────────────────
+  oauthRegister: { kind: "token bucket", rate: 5, period: HOUR, capacity: 5 },
+  oauthTokenExchange: { kind: "token bucket", rate: 30, period: MINUTE, capacity: 10 },
+  createApiToken: { kind: "token bucket", rate: 10, period: HOUR, capacity: 3 },
 });
