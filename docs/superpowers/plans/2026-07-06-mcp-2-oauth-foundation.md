@@ -635,8 +635,10 @@ git commit -m "feat: add OAuth endpoint rate limits"
   - `registerClient` (public mutation): `{ clientId, clientName, redirectUris, ip }` → `null`; throws `ConvexError({ code: "invalid_redirect_uri" })` on bad URIs
   - `getClientPublic` (public query): `{ clientId }` → `{ clientId, clientName, redirectUris } | null`
   - `createAuthCode` (authed mutation): `{ clientId, redirectUri, codeHash, codeChallenge, scope, resource? }` → `null`
-  - `exchangeAuthCode` (public mutation): `{ codeHash, clientId, redirectUri, codeChallenge, refreshTokenHash, ip }` → `{ userId, grantId, scope }`; throws `ConvexError({ code: "invalid_grant", message })`
-  - `rotateRefreshToken` (public mutation): `{ tokenHash, newTokenHash, clientId, ip }` → `{ userId, grantId, scope }`; same error shape
+  - `exchangeAuthCode` (public mutation): `{ codeHash, clientId, redirectUri, codeChallenge, refreshTokenHash, ip }` → `{ userId, grantId, scope } | { revoked: true }`; throws `ConvexError({ code: "invalid_grant", message })` for pure rejections
+  - `rotateRefreshToken` (public mutation): `{ tokenHash, newTokenHash, clientId, ip }` → `{ userId, grantId, scope } | { revoked: true }`; same error shape
+
+> **⚠️ Implementation correction (Convex atomicity):** the reuse-detection paths must **return** a `{ revoked: true }` sentinel, NOT `throw`, after calling `revokeGrantById`. A throwing Convex mutation rolls back all its own writes, so the original plan's `revoke…();throw invalidGrant(…)` never persisted the revocation (TDD caught this: `listGrants` still returned the grant). The token route (Task 11) maps `{ revoked: true }` to `400 invalid_grant`. Every non-grant-affecting rejection (unknown/expired/PKCE-mismatch/redirect-mismatch code, unknown/expired/wrong-client refresh) still throws cleanly (no writes to lose).
   - `listGrants` (authed query): `{}` → `Array<{ _id, clientName, scope, createdAt, lastUsedAt? }>` (active only)
   - `revokeGrant` (authed mutation): `{ grantId }` → `null`
 - Error contract: all OAuth-protocol failures throw `ConvexError` whose `.data.code` is an RFC 6749 error code; the token route maps it to the HTTP body. **Public mutations are deliberately callable without auth** (Next calls them server-side unauthenticated); they handle only hashes, throw uniform `invalid_grant`, and are rate-limited — note this in a file-top comment.
