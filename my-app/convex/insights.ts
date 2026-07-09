@@ -31,10 +31,15 @@ export const listWearLogsFiltered = query({
       return await ctx.db
         .query("wearLogs")
         .withIndex("by_user_bottle_time", (q) => {
-          let r = q.eq("userId", userId).eq("bottleId", bottleId);
-          if (from !== undefined) r = r.gte("wornAt", from);
-          if (to !== undefined) r = r.lte("wornAt", to);
-          return r;
+          // Return a single terminal range per case — the Convex range builder's
+          // bound methods each return a distinct type, so a reassigned `let`
+          // doesn't typecheck.
+          const base = q.eq("userId", userId).eq("bottleId", bottleId);
+          if (from !== undefined && to !== undefined)
+            return base.gte("wornAt", from).lte("wornAt", to);
+          if (from !== undefined) return base.gte("wornAt", from);
+          if (to !== undefined) return base.lte("wornAt", to);
+          return base;
         })
         .order("desc")
         .take(limit);
@@ -42,10 +47,12 @@ export const listWearLogsFiltered = query({
     return await ctx.db
       .query("wearLogs")
       .withIndex("by_user_time", (q) => {
-        let r = q.eq("userId", userId);
-        if (from !== undefined) r = r.gte("wornAt", from);
-        if (to !== undefined) r = r.lte("wornAt", to);
-        return r;
+        const base = q.eq("userId", userId);
+        if (from !== undefined && to !== undefined)
+          return base.gte("wornAt", from).lte("wornAt", to);
+        if (from !== undefined) return base.gte("wornAt", from);
+        if (to !== undefined) return base.lte("wornAt", to);
+        return base;
       })
       .order("desc")
       .take(limit);
