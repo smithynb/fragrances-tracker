@@ -3,20 +3,30 @@ import {
   createRouteMatcher,
   nextjsMiddlewareRedirect,
 } from "@convex-dev/auth/nextjs/server";
+import { isSafeInternalPath } from "@/lib/mcp/oauth-validation";
 
 const isSignInPage = createRouteMatcher(["/signin"]);
-const isProtectedRoute = createRouteMatcher(["/"]);
+const isProtectedRoute = createRouteMatcher(["/", "/oauth/authorize", "/settings(.*)"]);
 
 export default convexAuthNextjsMiddleware(
   async (request, { convexAuth }) => {
     const isAuthenticated = await convexAuth.isAuthenticated();
 
     if (isSignInPage(request) && isAuthenticated) {
-      return nextjsMiddlewareRedirect(request, "/");
+      const target = request.nextUrl.searchParams.get("redirect");
+      return nextjsMiddlewareRedirect(
+        request,
+        target && isSafeInternalPath(target) ? target : "/",
+      );
     }
 
     if (isProtectedRoute(request) && !isAuthenticated) {
-      return nextjsMiddlewareRedirect(request, "/signin");
+      const { pathname, search } = request.nextUrl;
+      // Preserve where the user was headed (e.g. an OAuth authorize URL with
+      // its full query) so sign-in can bounce them back.
+      const suffix =
+        pathname === "/" ? "" : `?redirect=${encodeURIComponent(`${pathname}${search}`)}`;
+      return nextjsMiddlewareRedirect(request, `/signin${suffix}`);
     }
   },
   {

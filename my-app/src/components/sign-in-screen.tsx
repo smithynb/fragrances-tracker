@@ -7,7 +7,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
 import { LoaderCircle } from "lucide-react";
 
-export function SignInScreen() {
+export function SignInScreen({ redirectTo = "/" }: { redirectTo?: string }) {
   const { signIn } = useAuthActions();
   const [isSigningIn, setIsSigningIn] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -17,7 +17,7 @@ export function SignInScreen() {
     setErrorMessage(null);
 
     try {
-      await signIn("google", { redirectTo: "/" });
+      await signIn("google", { redirectTo });
     } catch (error) {
       // Show a generic message instead of the raw error to avoid leaking
       // internal details (stack traces, library internals) to the user.
