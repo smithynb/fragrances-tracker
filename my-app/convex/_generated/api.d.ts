@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as apiTokens from "../apiTokens.js";
 import type * as auth from "../auth.js";
 import type * as bottles from "../bottles.js";
 import type * as helpers from "../helpers.js";
@@ -25,6 +26,7 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  apiTokens: typeof apiTokens;
   auth: typeof auth;
   bottles: typeof bottles;
   helpers: typeof helpers;
