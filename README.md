@@ -107,6 +107,102 @@ All scripts should be run from inside the `my-app/` directory.
 
 ---
 
+## MCP server: connect your AI agent
+
+The app exposes a remote **[Model Context Protocol](https://modelcontextprotocol.io) server** at
+`https://<app-domain>/api/mcp` (streamable HTTP, stateless). Connect your own AI agent to read and
+update your collection and to get insight-shaped data for one-shot analysis. Auth is **OAuth 2.1**
+(for claude.ai / ChatGPT / Claude Code) plus **personal access tokens** (for header-based CLI
+clients). Twelve tools are exposed: CRUD over bottles and wear logs, plus `list_wear_logs`,
+`get_collection_stats`, and `get_collection_snapshot`. Insights are computed by the connecting
+agent — the server does no LLM calls.
+
+### Connect from claude.ai or ChatGPT
+
+- **claude.ai** → Settings → Connectors → *Add custom connector* → paste `https://<app-domain>/api/mcp`
+  → complete the Google sign-in and approve the consent screen.
+- **ChatGPT** (developer mode) → Settings → Connectors → *Add* → same URL → approve.
+
+Then ask e.g. *"What should I wear tonight? Consider what I've worn recently."*
+
+### Connect from Claude Code
+
+OAuth mode (opens a browser to approve):
+
+```bash
+claude mcp add --transport http fragrances https://<app-domain>/api/mcp
+```
+
+PAT mode (header auth, no browser):
+
+```bash
+claude mcp add --transport http fragrances https://<app-domain>/api/mcp \
+  --header "Authorization: Bearer fgt_<token>"
+```
+
+### Personal access tokens (PATs)
+
+Create them in **Settings → Connections**. A PAT is prefixed `fgt_`, **shown exactly once** at
+creation (only its SHA-256 hash is stored), and revocable anytime. Send it as
+`Authorization: Bearer fgt_…`. Revoke it in the same screen; the next request fails within one
+call.
+
+### Operator setup
+
+Generate the signing keypair once per environment:
+
+```bash
+cd my-app && bun scripts/generate-mcp-keypair.mjs
+```
+
+| Var | Where | Value |
+|---|---|---|
+| `MCP_JWT_PRIVATE_KEY` | Vercel + `.env.local` | PKCS8 PEM from the generator script |
+| `NEXT_PUBLIC_APP_URL` | Vercel + `.env.local` | App origin; doubles as the JWT issuer |
+| `MCP_EXTRA_PUBLIC_JWKS` | Vercel (optional) | JSON array of extra public JWKs (dev-key strategy below) |
+| `MCP_JWT_ISSUER` | Convex dashboard | = the app origin of that environment |
+| `MCP_JWKS_URL` | Convex dashboard | JWKS URL **reachable from Convex Cloud** |
+
+Smoke-test any deployment's OAuth surface:
+
+```bash
+./my-app/scripts/oauth-smoke.sh https://<app-domain>
+```
+
+### Local development
+
+Convex Cloud verifies MCP access tokens by fetching `MCP_JWKS_URL`, and it **cannot reach
+`localhost`**. Resolve it with a dedicated dev keypair whose *public* half is published in the
+**production** JWKS:
+
+1. `bun scripts/generate-mcp-keypair.mjs mcp-dev-1` — put the private PEM in `.env.local`'s
+   `MCP_JWT_PRIVATE_KEY` (dev machine only; never in Vercel). Copy the printed public JWK.
+2. Add that public JWK to Vercel's `MCP_EXTRA_PUBLIC_JWKS` (a JSON array) and redeploy. Confirm both
+   keys are served: `curl -s https://<prod-app>/api/oauth/jwks` shows `kid` `mcp-1` and `mcp-dev-1`.
+3. In the Convex **dev** dashboard set `MCP_JWT_ISSUER=http://localhost:3000` and
+   `MCP_JWKS_URL=https://<prod-app>/api/oauth/jwks`.
+
+**Why this is safe:** the JWKS contains only public key material; the dev private key never leaves
+your machine; and a dev-signed token presented to **production** Convex is rejected because prod's
+`customJwt` provider requires `iss = https://<prod-app>` while dev tokens carry
+`iss = http://localhost:3000`.
+
+**Alternative** (if publishing the dev key is unacceptable): run
+`cloudflared tunnel --url http://localhost:3000` and use the tunnel URL as both `NEXT_PUBLIC_APP_URL`
+(so minted tokens carry that issuer) and the Convex `MCP_JWT_ISSUER` / `MCP_JWKS_URL`. Quick tunnels
+get a fresh random hostname each run, so re-set these env vars per session.
+
+### Key rotation
+
+1. Generate a new keypair with a **new `kid`**.
+2. Serve **both** public keys via `MCP_EXTRA_PUBLIC_JWKS` so tokens signed by the old key still
+   verify (access tokens live ≤15 min, PAT bridge tokens ≤5 min).
+3. Switch `MCP_JWT_PRIVATE_KEY` to the new private key.
+4. After 24 h — well past every old token's expiry — drop the old public key from
+   `MCP_EXTRA_PUBLIC_JWKS`.
+
+---
+
 ## License
 
 This project is licensed under the [MIT License](LICENSE).
