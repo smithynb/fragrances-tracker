@@ -115,9 +115,16 @@ export function HomePage() {
         </div>
 
         <div className="flex items-center gap-2">
-          <Button asChild variant="ghost" size="sm" aria-label="Connections settings">
+          <Button
+            asChild
+            variant="ghost"
+            size="sm"
+            aria-label="Connections settings"
+            className="gap-2"
+          >
             <Link href="/settings/connections">
               <Settings className="h-4 w-4" />
+              <span className="hidden sm:inline">Connections</span>
             </Link>
           </Button>
           <ThemeToggle />

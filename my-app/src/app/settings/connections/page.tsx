@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { ConnectedApps } from "@/components/connected-apps";
+import { McpConnectCard } from "@/components/mcp-connect-card";
 import { PatManager } from "@/components/pat-manager";
 import { Button } from "@/components/ui/button";
 
@@ -26,6 +27,7 @@ export default function ConnectionsPage() {
           Manage AI agents and API tokens that can access your collection via MCP.
         </p>
         <div className="mt-8 space-y-10">
+          <McpConnectCard />
           <ConnectedApps />
           <PatManager />
         </div>
