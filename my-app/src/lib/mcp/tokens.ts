@@ -1,6 +1,7 @@
 // src/lib/mcp/tokens.ts
-// Server-only JWT helpers for the MCP OAuth server. Convex functions never
-// import this; they only receive minted credentials.
+// Server-only JWT helpers for the MCP OAuth server. The MCP endpoint runs in
+// this app's Next.js server route on Vercel; this code is not client payload.
+// Convex functions never import it; they only receive minted credentials.
 import "server-only";
 import { SignJWT, importPKCS8, exportJWK } from "jose";
 
