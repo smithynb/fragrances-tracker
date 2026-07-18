@@ -38,6 +38,9 @@ export function McpConnectCard() {
         <li>Paste the URL above.</li>
         <li>Sign in and approve access on the consent screen.</li>
       </ol>
+      <p className="mt-3 text-sm text-text-secondary">
+        Not sure where? Ask your agent how to add this!
+      </p>
     </section>
   );
 }

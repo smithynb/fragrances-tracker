@@ -163,6 +163,9 @@ export function PatManager() {
                 idleLabel={`Revoke ${token.name}`}
                 confirmLabel="Confirm revoke"
                 size="compact"
+                className="border"
+                idleClassName="border-red-500/25 bg-red-500/10 text-red-400 hover:bg-red-500/20"
+                confirmingClassName="border-transparent"
               />
             </li>
           ))}
