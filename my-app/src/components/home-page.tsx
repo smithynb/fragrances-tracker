@@ -12,9 +12,10 @@ import { BottleCollection } from "@/components/bottle-collection";
 import { BottleDetail } from "@/components/bottle-detail";
 import { AddBottleDialog } from "@/components/add-bottle-dialog";
 import { AddWearLogDialog } from "@/components/add-wear-log-dialog";
+import { McpIcon } from "@/components/icons/mcp-icon";
 import { Button } from "@/components/ui/button";
 import { useOnboarding, ONBOARDING_SETTLE_MS } from "@/lib/use-onboarding";
-import { LoaderCircle, LogOut, Settings, Wine } from "lucide-react";
+import { LoaderCircle, LogOut, Wine } from "lucide-react";
 
 export function HomePage() {
   const router = useRouter();
@@ -123,7 +124,7 @@ export function HomePage() {
             className="gap-2"
           >
             <Link href="/settings/connections">
-              <Settings className="h-4 w-4" />
+              <McpIcon className="h-4 w-4" />
               <span className="hidden sm:inline">Connections</span>
             </Link>
           </Button>
