@@ -62,6 +62,7 @@ export default defineSchema({
     resource: v.optional(v.string()),
     expiresAt: v.number(),
     usedAt: v.optional(v.number()),
+    grantId: v.optional(v.id("oauthGrants")),
   }).index("by_code_hash", ["codeHash"]),
 
   oauthGrants: defineTable({

@@ -1,22 +1,28 @@
 // convex/oauth.test.ts
 import { ConvexError } from "convex/values";
-import { beforeEach, describe, expect, test } from "vitest";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { api } from "./_generated/api";
 import { createTestUser, setupTest } from "./test.setup";
 
 const IP = "203.0.113.7";
+const INTERNAL_SECRET = "test-oauth-internal-secret";
 const CLIENT = {
   clientId: "abc123abc123abc123abc123abc123ab",
   clientName: "Claude",
   redirectUris: ["https://claude.ai/api/mcp/auth_callback"],
   ip: IP,
+  internalSecret: INTERNAL_SECRET,
 };
 const REDIRECT = CLIENT.redirectUris[0];
 const CHALLENGE = "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM";
 
 type T = ReturnType<typeof setupTest>;
 
-async function mintCode(t: T, as: Awaited<ReturnType<typeof createTestUser>>["as"], codeHash: string) {
+async function mintCode(
+  t: T,
+  as: Awaited<ReturnType<typeof createTestUser>>["as"],
+  codeHash: string,
+) {
   await as.mutation(api.oauth.createAuthCode, {
     clientId: CLIENT.clientId,
     redirectUri: REDIRECT,
@@ -34,6 +40,7 @@ function exchangeArgs(codeHash: string, overrides: Partial<Record<string, string
     codeChallenge: CHALLENGE,
     refreshTokenHash: "rt-hash-1",
     ip: IP,
+    internalSecret: INTERNAL_SECRET,
     ...overrides,
   };
 }
@@ -41,8 +48,55 @@ function exchangeArgs(codeHash: string, overrides: Partial<Record<string, string
 describe("oauth", () => {
   let t: T;
   beforeEach(async () => {
+    vi.stubEnv("OAUTH_INTERNAL_SECRET", INTERNAL_SECRET);
     t = setupTest();
     await t.mutation(api.oauth.registerClient, CLIENT);
+  });
+
+  afterEach(() => vi.unstubAllEnvs());
+
+  test.each(["", "wrong-secret"])(
+    "server-only mutations reject an invalid internal secret",
+    async (internalSecret) => {
+      const expected = JSON.stringify({
+        code: "internal_error",
+        message: "Internal server error.",
+      });
+      await expect(
+        t.mutation(api.oauth.registerClient, {
+          ...CLIENT,
+          clientId: "otherotherotherotherotherotherot",
+          internalSecret,
+        }),
+      ).rejects.toThrow(expected);
+      await expect(
+        t.mutation(api.oauth.exchangeAuthCode, {
+          ...exchangeArgs("unknown"),
+          internalSecret,
+        }),
+      ).rejects.toThrow(expected);
+      await expect(
+        t.mutation(api.oauth.rotateRefreshToken, {
+          tokenHash: "unknown",
+          newTokenHash: "new",
+          clientId: CLIENT.clientId,
+          ip: IP,
+          internalSecret,
+        }),
+      ).rejects.toThrow(expected);
+    },
+  );
+
+  test("server-only mutations fail uniformly when the deployment secret is missing", async () => {
+    vi.stubEnv("OAUTH_INTERNAL_SECRET", "");
+    await expect(
+      t.mutation(api.oauth.registerClient, {
+        ...CLIENT,
+        clientId: "otherotherotherotherotherotherot",
+      }),
+    ).rejects.toThrow(
+      JSON.stringify({ code: "internal_error", message: "Internal server error." }),
+    );
   });
 
   test("registerClient rejects invalid redirect URIs", async () => {
@@ -53,6 +107,12 @@ describe("oauth", () => {
         redirectUris: ["http://evil.com/cb"],
       }),
     ).rejects.toThrow(ConvexError);
+  });
+
+  test("registerClient rejects a duplicate clientId", async () => {
+    await expect(t.mutation(api.oauth.registerClient, CLIENT)).rejects.toThrow(
+      JSON.stringify({ code: "invalid_client_metadata", message: "Client registration failed." }),
+    );
   });
 
   test("getClientPublic returns registered metadata, null for unknown", async () => {
@@ -73,6 +133,21 @@ describe("oauth", () => {
     ).rejects.toThrow("Unauthenticated");
   });
 
+  test("createAuthCode rejects a malformed PKCE challenge", async () => {
+    const { as } = await createTestUser(t);
+    await expect(
+      as.mutation(api.oauth.createAuthCode, {
+        clientId: CLIENT.clientId,
+        redirectUri: REDIRECT,
+        codeHash: "h",
+        codeChallenge: "too-short",
+        scope: "read write",
+      }),
+    ).rejects.toThrow(
+      JSON.stringify({ code: "invalid_request", message: "Invalid PKCE code challenge." }),
+    );
+  });
+
   test("exchangeAuthCode happy path creates a grant and returns it", async () => {
     const { userId, as } = await createTestUser(t);
     await mintCode(t, as, "code-hash-1");
@@ -87,7 +162,10 @@ describe("oauth", () => {
     const { as } = await createTestUser(t);
     await mintCode(t, as, "code-hash-2");
     await expect(
-      t.mutation(api.oauth.exchangeAuthCode, exchangeArgs("code-hash-2", { codeChallenge: "WRONG" })),
+      t.mutation(
+        api.oauth.exchangeAuthCode,
+        exchangeArgs("code-hash-2", { codeChallenge: "WRONG" }),
+      ),
     ).rejects.toThrow(ConvexError);
   });
 
@@ -113,9 +191,9 @@ describe("oauth", () => {
     await mintCode(t, as, "code-hash-4");
     await t.mutation(api.oauth.exchangeAuthCode, exchangeArgs("code-hash-4"));
     // Reuse returns the revocation sentinel (not a throw) so the revoke commits.
-    expect(
-      await t.mutation(api.oauth.exchangeAuthCode, exchangeArgs("code-hash-4")),
-    ).toEqual({ revoked: true });
+    expect(await t.mutation(api.oauth.exchangeAuthCode, exchangeArgs("code-hash-4"))).toEqual({
+      revoked: true,
+    });
     expect(await as.query(api.oauth.listGrants, {})).toHaveLength(0);
   });
 
@@ -134,6 +212,47 @@ describe("oauth", () => {
     ).rejects.toThrow(ConvexError);
   });
 
+  test("replay of an expired consumed code does not revoke its grant", async () => {
+    const { as } = await createTestUser(t);
+    await mintCode(t, as, "code-hash-expired-replay");
+    await t.mutation(api.oauth.exchangeAuthCode, exchangeArgs("code-hash-expired-replay"));
+    await t.run(async (ctx) => {
+      const code = await ctx.db
+        .query("oauthAuthCodes")
+        .withIndex("by_code_hash", (q) => q.eq("codeHash", "code-hash-expired-replay"))
+        .unique();
+      await ctx.db.patch(code!._id, { expiresAt: Date.now() - 1 });
+    });
+
+    await expect(
+      t.mutation(api.oauth.exchangeAuthCode, exchangeArgs("code-hash-expired-replay")),
+    ).rejects.toThrow(ConvexError);
+    expect(await as.query(api.oauth.listGrants, {})).toHaveLength(1);
+  });
+
+  test("replay revokes only the grant created by that authorization code", async () => {
+    const { as } = await createTestUser(t);
+    await mintCode(t, as, "code-hash-old-grant");
+    const first = await t.mutation(api.oauth.exchangeAuthCode, exchangeArgs("code-hash-old-grant"));
+    if ("revoked" in first) throw new Error("Expected initial exchange to succeed.");
+    await as.mutation(api.oauth.revokeGrant, { grantId: first.grantId });
+
+    await mintCode(t, as, "code-hash-new-grant");
+    const second = await t.mutation(
+      api.oauth.exchangeAuthCode,
+      exchangeArgs("code-hash-new-grant", { refreshTokenHash: "rt-hash-new-grant" }),
+    );
+    if ("revoked" in second) throw new Error("Expected second exchange to succeed.");
+    expect(second.grantId).not.toBe(first.grantId);
+
+    expect(
+      await t.mutation(api.oauth.exchangeAuthCode, exchangeArgs("code-hash-old-grant")),
+    ).toEqual({ revoked: true });
+    const grants = await as.query(api.oauth.listGrants, {});
+    expect(grants).toHaveLength(1);
+    expect(grants[0]._id).toBe(second.grantId);
+  });
+
   test("refresh rotation works and reuse of a rotated token revokes the whole grant", async () => {
     const { as } = await createTestUser(t);
     await mintCode(t, as, "code-hash-6");
@@ -145,6 +264,7 @@ describe("oauth", () => {
       newTokenHash: "rt-hash-2",
       clientId: CLIENT.clientId,
       ip: IP,
+      internalSecret: INTERNAL_SECRET,
     });
     expect(rotated).toMatchObject({ scope: "read write" });
 
@@ -156,6 +276,7 @@ describe("oauth", () => {
         newTokenHash: "rt-hash-3",
         clientId: CLIENT.clientId,
         ip: IP,
+        internalSecret: INTERNAL_SECRET,
       }),
     ).toEqual({ revoked: true });
     expect(await as.query(api.oauth.listGrants, {})).toHaveLength(0);
@@ -167,6 +288,7 @@ describe("oauth", () => {
         newTokenHash: "rt-hash-4",
         clientId: CLIENT.clientId,
         ip: IP,
+        internalSecret: INTERNAL_SECRET,
       }),
     ).toEqual({ revoked: true });
   });
@@ -185,6 +307,7 @@ describe("oauth", () => {
         newTokenHash: "rt-hash-9",
         clientId: CLIENT.clientId,
         ip: IP,
+        internalSecret: INTERNAL_SECRET,
       }),
     ).toEqual({ revoked: true });
   });

@@ -4,6 +4,7 @@
 // Convex functions never import it; they only receive minted credentials.
 import "server-only";
 import { SignJWT, importPKCS8, exportJWK } from "jose";
+import { appOrigin } from "./cors";
 
 export const MCP_JWT_AUDIENCE = "fragrances-mcp";
 export const ACCESS_TOKEN_TTL_SECONDS = 900; // 15 min
@@ -32,7 +33,7 @@ async function mint(
   return await new SignJWT(claims)
     .setProtectedHeader({ alg: "RS256", kid: signingKid })
     .setSubject(subject)
-    .setIssuer(issuer ?? requireEnv(process.env.NEXT_PUBLIC_APP_URL, "NEXT_PUBLIC_APP_URL"))
+    .setIssuer(issuer ?? appOrigin())
     .setAudience(MCP_JWT_AUDIENCE)
     .setIssuedAt()
     .setExpirationTime(`${ttlSeconds}s`)
@@ -92,6 +93,32 @@ export async function getPublicJwks(
   const signingKid = kid ?? requireEnv(process.env.MCP_JWT_KID, "MCP_JWT_KID");
   const keys: object[] = [{ ...jwk, kid: signingKid, alg: "RS256", use: "sig" }];
   const extra = process.env.MCP_EXTRA_PUBLIC_JWKS;
-  if (extra) keys.push(...(JSON.parse(extra) as object[]));
+  if (extra) {
+    const parsed: unknown = JSON.parse(extra);
+    if (!Array.isArray(parsed)) throw new Error("MCP_EXTRA_PUBLIC_JWKS must be a JSON array.");
+
+    const seenKids = new Set([signingKid]);
+    for (const value of parsed) {
+      if (typeof value !== "object" || value === null || Array.isArray(value)) {
+        throw new Error("Each extra JWK must be an object.");
+      }
+      const extraJwk = value as Record<string, unknown>;
+      if (["d", "p", "q", "dp", "dq", "qi"].some((field) => field in extraJwk)) {
+        throw new Error("Extra JWKs must not contain private key fields.");
+      }
+      if (extraJwk.kty !== "RSA") throw new Error("Extra JWK kty must be RSA.");
+      if (extraJwk.use !== "sig") throw new Error("Extra JWK use must be sig.");
+      if (extraJwk.alg !== undefined && extraJwk.alg !== "RS256") {
+        throw new Error("Extra JWK alg must be RS256 or absent.");
+      }
+      if (typeof extraJwk.kid !== "string" || extraJwk.kid.trim() === "") {
+        throw new Error("Extra JWK kid must be a non-empty string.");
+      }
+      if (seenKids.has(extraJwk.kid))
+        throw new Error(`Extra JWK has duplicate kid: ${extraJwk.kid}.`);
+      seenKids.add(extraJwk.kid);
+      keys.push(extraJwk);
+    }
+  }
   return { keys };
 }

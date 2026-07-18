@@ -20,6 +20,16 @@ export function matchesRegisteredRedirect(uri: string, registered: string[]): bo
   return registered.includes(uri);
 }
 
+/** RFC 7636 §4.1: 43-128 characters from the unreserved URI character set. */
+export function isValidCodeVerifier(verifier: string): boolean {
+  return /^[A-Za-z0-9._~-]{43,128}$/.test(verifier);
+}
+
+/** S256 produces exactly 32 bytes, encoded as 43 unpadded base64url characters. */
+export function isValidCodeChallenge(challenge: string): boolean {
+  return /^[A-Za-z0-9_-]{43}$/.test(challenge);
+}
+
 /** PKCE S256: base64url(SHA-256(ascii(code_verifier))), unpadded (RFC 7636 §4.2). */
 export async function computeS256Challenge(codeVerifier: string): Promise<string> {
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(codeVerifier));

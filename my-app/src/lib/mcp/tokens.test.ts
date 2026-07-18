@@ -1,12 +1,7 @@
 // src/lib/mcp/tokens.test.ts
 import { afterEach, describe, expect, test, vi } from "vitest";
-import { exportPKCS8, generateKeyPair, jwtVerify, createLocalJWKSet } from "jose";
-import {
-  mintAccessToken,
-  mintPatBridgeToken,
-  getPublicJwks,
-  MCP_JWT_AUDIENCE,
-} from "./tokens";
+import { exportJWK, exportPKCS8, generateKeyPair, jwtVerify, createLocalJWKSet } from "jose";
+import { mintAccessToken, mintPatBridgeToken, getPublicJwks, MCP_JWT_AUDIENCE } from "./tokens";
 
 const ISSUER = "https://example.test";
 const TEST_KID = "mcp-test-1";
@@ -61,6 +56,51 @@ describe("mintAccessToken", () => {
       jwtVerify(token, jwksB, { issuer: ISSUER, audience: MCP_JWT_AUDIENCE }),
     ).rejects.toThrow();
   });
+
+  test("canonicalizes the configured app origin for the default issuer", async () => {
+    vi.stubEnv("NEXT_PUBLIC_APP_URL", "https://example.test/");
+    const pem = await testPem();
+    const token = await mintAccessToken({
+      userId: "user123",
+      grantId: "grant456",
+      clientId: "client789",
+      scope: "read write",
+      privateKeyPem: pem,
+      kid: TEST_KID,
+    });
+    const { payload } = await jwtVerify(
+      token,
+      createLocalJWKSet(await getPublicJwks(pem, TEST_KID)),
+      {
+        issuer: ISSUER,
+        audience: MCP_JWT_AUDIENCE,
+      },
+    );
+    expect(payload.iss).toBe(ISSUER);
+  });
+
+  test("rejects a configured app URL with path, query, or fragment", async () => {
+    const pem = await testPem();
+    for (const value of [
+      "https://example.test/oauth",
+      "https://example.test/?env=prod",
+      "https://example.test/#issuer",
+      "https://example.test/?",
+      "https://example.test/#",
+    ]) {
+      vi.stubEnv("NEXT_PUBLIC_APP_URL", value);
+      await expect(
+        mintAccessToken({
+          userId: "user123",
+          grantId: "grant456",
+          clientId: "client789",
+          scope: "read write",
+          privateKeyPem: pem,
+          kid: TEST_KID,
+        }),
+      ).rejects.toThrow("NEXT_PUBLIC_APP_URL must be an origin without a path, query, or fragment");
+    }
+  });
 });
 
 describe("mintPatBridgeToken", () => {
@@ -74,7 +114,10 @@ describe("mintPatBridgeToken", () => {
       kid: TEST_KID,
     });
     const jwks = createLocalJWKSet(await getPublicJwks(pem, TEST_KID));
-    const { payload } = await jwtVerify(token, jwks, { issuer: ISSUER, audience: MCP_JWT_AUDIENCE });
+    const { payload } = await jwtVerify(token, jwks, {
+      issuer: ISSUER,
+      audience: MCP_JWT_AUDIENCE,
+    });
     expect(payload.sub).toBe("user123|pat:tok789");
     expect((payload.exp as number) - (payload.iat as number)).toBe(300);
   });
@@ -148,5 +191,39 @@ describe("getPublicJwks", () => {
 
     expect(oldResult.protectedHeader.kid).toBe("mcp-old-1");
     expect(newResult.protectedHeader.kid).toBe("mcp-new-1");
+  });
+
+  test("accepts only distinct public RSA signing keys from MCP_EXTRA_PUBLIC_JWKS", async () => {
+    const primaryPem = await testPem();
+    const { publicKey } = await generateKeyPair("RS256", { extractable: true });
+    const extra = { ...(await exportJWK(publicKey)), kid: "mcp-old-1", use: "sig" };
+    vi.stubEnv("MCP_EXTRA_PUBLIC_JWKS", JSON.stringify([extra]));
+
+    const { keys } = await getPublicJwks(primaryPem, "mcp-new-1");
+    expect(keys).toHaveLength(2);
+    expect(keys[1]).toEqual(extra);
+  });
+
+  test.each([
+    [{ kty: "EC", use: "sig", alg: "RS256", kid: "extra" }, "kty"],
+    [{ kty: "RSA", use: "enc", alg: "RS256", kid: "extra" }, "use"],
+    [{ kty: "RSA", use: "sig", alg: "RS512", kid: "extra" }, "alg"],
+    [{ kty: "RSA", use: "sig", alg: "RS256", kid: "" }, "kid"],
+    [{ kty: "RSA", use: "sig", alg: "RS256", kid: "primary" }, "duplicate kid"],
+    [{ kty: "RSA", use: "sig", alg: "RS256", kid: "extra", d: "private" }, "private"],
+  ])("rejects an unsafe extra JWK %#", async (extra, message) => {
+    vi.stubEnv("MCP_EXTRA_PUBLIC_JWKS", JSON.stringify([extra]));
+    await expect(getPublicJwks(await testPem(), "primary")).rejects.toThrow(message);
+  });
+
+  test("rejects duplicate kids among extra JWKs", async () => {
+    vi.stubEnv(
+      "MCP_EXTRA_PUBLIC_JWKS",
+      JSON.stringify([
+        { kty: "RSA", use: "sig", kid: "old" },
+        { kty: "RSA", use: "sig", kid: "old" },
+      ]),
+    );
+    await expect(getPublicJwks(await testPem(), "primary")).rejects.toThrow("duplicate kid");
   });
 });

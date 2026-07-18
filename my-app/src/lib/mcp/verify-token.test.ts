@@ -28,8 +28,12 @@ describe("verifyMcpToken — OAuth JWT path", () => {
   test("valid JWT yields authInfo whose convexToken is the JWT itself", async () => {
     const { pem, verify } = await makeVerifier();
     const jwt = await mintAccessToken({
-      userId: "user123", grantId: "grant456", clientId: "client789",
-      scope: "read write", privateKeyPem: pem, issuer: ISSUER,
+      userId: "user123",
+      grantId: "grant456",
+      clientId: "client789",
+      scope: "read write",
+      privateKeyPem: pem,
+      issuer: ISSUER,
     });
     const info = await verify(REQ, jwt);
     expect(info?.clientId).toBe("client789");
@@ -41,8 +45,12 @@ describe("verifyMcpToken — OAuth JWT path", () => {
     const { verify } = await makeVerifier();
     const other = await generateKeyPair("RS256", { extractable: true });
     const forged = await mintAccessToken({
-      userId: "user123", grantId: "g", clientId: "c", scope: "read write",
-      privateKeyPem: await exportPKCS8(other.privateKey), issuer: ISSUER,
+      userId: "user123",
+      grantId: "g",
+      clientId: "c",
+      scope: "read write",
+      privateKeyPem: await exportPKCS8(other.privateKey),
+      issuer: ISSUER,
     });
     expect(await verify(REQ, forged)).toBeUndefined();
   });
@@ -51,6 +59,21 @@ describe("verifyMcpToken — OAuth JWT path", () => {
     const { verify } = await makeVerifier();
     expect(await verify(REQ, undefined)).toBeUndefined();
     expect(await verify(REQ, "not-a-jwt")).toBeUndefined();
+  });
+
+  test("uses the canonical app origin for the default issuer", async () => {
+    vi.stubEnv("NEXT_PUBLIC_APP_URL", "https://example.test/");
+    const { pem, verify } = await makeVerifier({ issuer: undefined });
+    const jwt = await mintAccessToken({
+      userId: "user123",
+      grantId: "grant456",
+      clientId: "client789",
+      scope: "read write",
+      privateKeyPem: pem,
+      issuer: ISSUER,
+    });
+
+    expect(await verify(REQ, jwt)).toMatchObject({ clientId: "client789" });
   });
 });
 
