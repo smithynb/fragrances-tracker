@@ -6,7 +6,7 @@ import { convexAuthNextjsToken } from "@convex-dev/auth/nextjs/server";
 import { redirect } from "next/navigation";
 import { api } from "../../../../convex/_generated/api";
 import { randomToken, sha256Hex } from "@/lib/mcp/token-crypto";
-import { matchesRegisteredRedirect } from "@/lib/mcp/oauth-validation";
+import { isValidCodeChallenge, matchesRegisteredRedirect } from "@/lib/mcp/oauth-validation";
 
 /** Builds redirect_uri?k=v... preserving existing query params on the URI. */
 export async function buildCallbackUrl(
@@ -44,7 +44,11 @@ export async function approveAuthorization(formData: FormData): Promise<void> {
   const f = readFields(formData);
   // Re-validate everything server-side; hidden form fields are attacker input.
   const client = await fetchQuery(api.oauth.getClientPublic, { clientId: f.clientId });
-  if (!client || !matchesRegisteredRedirect(f.redirectUri, client.redirectUris) || !f.codeChallenge) {
+  if (
+    !client ||
+    !matchesRegisteredRedirect(f.redirectUri, client.redirectUris) ||
+    !isValidCodeChallenge(f.codeChallenge)
+  ) {
     throw new Error("Invalid authorization request.");
   }
 

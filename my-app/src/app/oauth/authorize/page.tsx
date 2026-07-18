@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { fetchQuery } from "convex/nextjs";
 import { convexAuthNextjsToken } from "@convex-dev/auth/nextjs/server";
 import { api } from "../../../../convex/_generated/api";
-import { matchesRegisteredRedirect } from "@/lib/mcp/oauth-validation";
+import { isValidCodeChallenge, matchesRegisteredRedirect } from "@/lib/mcp/oauth-validation";
 import { approveAuthorization, denyAuthorization } from "./actions";
 import { Button } from "@/components/ui/button";
 
@@ -37,11 +37,11 @@ export default async function AuthorizePage({
   // Rule 1: bad client or redirect_uri → render, NEVER redirect.
   const clientId = str("client_id");
   const redirectUri = str("redirect_uri");
-  const client = clientId
-    ? await fetchQuery(api.oauth.getClientPublic, { clientId })
-    : null;
+  const client = clientId ? await fetchQuery(api.oauth.getClientPublic, { clientId }) : null;
   if (!client) {
-    return <ErrorCard message="Unknown or missing client_id. The connecting app may need to re-register." />;
+    return (
+      <ErrorCard message="Unknown or missing client_id. The connecting app may need to re-register." />
+    );
   }
   if (!redirectUri || !matchesRegisteredRedirect(redirectUri, client.redirectUris)) {
     return <ErrorCard message="The redirect URI does not match this app's registration." />;
@@ -60,12 +60,21 @@ export default async function AuthorizePage({
     bounce("unsupported_response_type", "Only response_type=code is supported.");
   }
   const codeChallenge = str("code_challenge");
-  if (!codeChallenge || str("code_challenge_method") !== "S256") {
+  if (
+    !codeChallenge ||
+    !isValidCodeChallenge(codeChallenge) ||
+    str("code_challenge_method") !== "S256"
+  ) {
     bounce("invalid_request", "PKCE with code_challenge_method=S256 is required.");
   }
+  const redirectOrigin = new URL(redirectUri).origin;
 
   // Middleware guarantees an authenticated session here.
-  const user = await fetchQuery(api.users.currentUser, {}, { token: await convexAuthNextjsToken() });
+  const user = await fetchQuery(
+    api.users.currentUser,
+    {},
+    { token: await convexAuthNextjsToken() },
+  );
 
   const hidden = (
     <>
@@ -80,9 +89,7 @@ export default async function AuthorizePage({
   return (
     <main className="flex min-h-dvh items-center justify-center bg-bg px-5">
       <div className="w-full max-w-[400px] rounded-2xl border border-border/40 bg-surface/80 p-8">
-        <p className="font-display text-xl tracking-tight text-text">
-          Connect {client.clientName}
-        </p>
+        <p className="font-display text-xl tracking-tight text-text">Connect {client.clientName}</p>
         <p className="mt-2 text-sm leading-relaxed text-text-secondary">
           <span className="font-medium text-text">{client.clientName}</span> wants to read and
           update the fragrance collection and wear history of{" "}
@@ -92,6 +99,10 @@ export default async function AuthorizePage({
           <li>View bottles, wear logs, and collection stats</li>
           <li>Add, edit, and delete bottles and wear logs</li>
         </ul>
+        <p className="mt-4 rounded-lg border border-border/40 bg-surface-alt px-3 py-2.5 text-sm leading-relaxed text-text-secondary">
+          Requests will be sent to <span className="font-medium text-text">{redirectOrigin}</span>.
+          This app was registered automatically and is not verified.
+        </p>
         <div className="mt-6 flex gap-3">
           <form action={denyAuthorization} className="flex-1">
             {hidden}

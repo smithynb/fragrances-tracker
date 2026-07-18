@@ -23,7 +23,11 @@ export function corsPreflight(): Response {
 }
 
 export function appOrigin(): string {
-  const origin = process.env.NEXT_PUBLIC_APP_URL;
-  if (!origin) throw new Error("Missing required env var NEXT_PUBLIC_APP_URL.");
-  return origin.replace(/\/$/, "");
+  const value = process.env.NEXT_PUBLIC_APP_URL;
+  if (!value) throw new Error("Missing required env var NEXT_PUBLIC_APP_URL.");
+  const url = new URL(value);
+  if (url.origin === "null" || url.href !== `${url.origin}/`) {
+    throw new Error("NEXT_PUBLIC_APP_URL must be an origin without a path, query, or fragment.");
+  }
+  return url.origin;
 }

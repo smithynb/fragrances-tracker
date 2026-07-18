@@ -9,6 +9,7 @@ import { ConvexHttpClient } from "convex/browser";
 import { api } from "../../../convex/_generated/api";
 import { getPublicJwks, mintPatBridgeToken, MCP_JWT_AUDIENCE } from "./tokens";
 import { PAT_PREFIX, sha256Hex } from "./token-crypto";
+import { appOrigin } from "./cors";
 
 export type McpExtra = { userId: string; convexToken: string };
 
@@ -61,7 +62,7 @@ export function createMcpTokenVerifier(deps: VerifierDeps = {}) {
     try {
       const jwks = createLocalJWKSet(await getPublicJwks(deps.privateKeyPem));
       const { payload } = await jwtVerify(bearer, jwks, {
-        issuer: deps.issuer ?? process.env.NEXT_PUBLIC_APP_URL,
+        issuer: deps.issuer ?? appOrigin(),
         audience: MCP_JWT_AUDIENCE,
         // Pin the algorithm: our tokens are always RS256. Defense-in-depth
         // against alg-confusion (jose already refuses HS*/none for an RSA key).

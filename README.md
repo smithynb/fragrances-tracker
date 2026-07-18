@@ -160,6 +160,7 @@ cd my-app && bun scripts/generate-mcp-keypair.mjs
 | `MCP_JWT_KID` | Vercel + `.env.local` | Key ID passed to the generator; must identify `MCP_JWT_PRIVATE_KEY` |
 | `MCP_JWT_PRIVATE_KEY` | Vercel + `.env.local` | PKCS8 PEM from the generator script |
 | `NEXT_PUBLIC_APP_URL` | Vercel + `.env.local` | App origin; doubles as the JWT issuer |
+| `OAUTH_INTERNAL_SECRET` | Vercel + Convex dashboard | Shared high-entropy secret; must be identical in the Vercel and Convex deployments |
 | `MCP_EXTRA_PUBLIC_JWKS` | Vercel (optional) | Same-environment rotation keys; production must never include dev/staging keys |
 | `MCP_JWT_ISSUER` | Convex dashboard | = the app origin of that environment |
 | `MCP_JWKS_URL` | Convex dashboard | JWKS URL **reachable from Convex Cloud** |

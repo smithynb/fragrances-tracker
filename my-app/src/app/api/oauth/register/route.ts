@@ -5,6 +5,7 @@ import { api } from "../../../../../convex/_generated/api";
 import { corsJson, corsPreflight } from "@/lib/mcp/cors";
 import { randomHex } from "@/lib/mcp/token-crypto";
 import { isValidRedirectUri } from "@/lib/mcp/oauth-validation";
+import { oauthInternalSecret } from "@/lib/mcp/internal-secret";
 
 const MAX_REDIRECT_URIS = 10;
 const MAX_URI_LENGTH = 2000;
@@ -62,6 +63,7 @@ export async function POST(req: Request) {
       clientName,
       redirectUris: uris as string[],
       ip: clientIp(req),
+      internalSecret: oauthInternalSecret(),
     });
   } catch (error) {
     if (error instanceof ConvexError) {

@@ -4,6 +4,8 @@ import {
   isValidRedirectUri,
   matchesRegisteredRedirect,
   computeS256Challenge,
+  isValidCodeVerifier,
+  isValidCodeChallenge,
   isSafeInternalPath,
 } from "./oauth-validation";
 
@@ -43,6 +45,29 @@ describe("computeS256Challenge", () => {
     expect(await computeS256Challenge("dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk")).toBe(
       "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM",
     );
+  });
+});
+
+describe("PKCE syntax", () => {
+  test.each([
+    ["a".repeat(43), true],
+    ["A0-._~".repeat(22).slice(0, 128), true],
+    ["a".repeat(42), false],
+    ["a".repeat(129), false],
+    [`${"a".repeat(42)}+`, false],
+    [`${"a".repeat(42)}=`, false],
+  ])("validates verifier %s", (verifier, valid) => {
+    expect(isValidCodeVerifier(verifier)).toBe(valid);
+  });
+
+  test.each([
+    ["E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM", true],
+    ["a".repeat(42), false],
+    ["a".repeat(44), false],
+    [`${"a".repeat(42)}=`, false],
+    [`${"a".repeat(42)}~`, false],
+  ])("validates challenge %s", (challenge, valid) => {
+    expect(isValidCodeChallenge(challenge)).toBe(valid);
   });
 });
 

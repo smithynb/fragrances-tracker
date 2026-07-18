@@ -5,7 +5,8 @@ import { api } from "../../../../../convex/_generated/api";
 import { corsJson, corsPreflight } from "@/lib/mcp/cors";
 import { ACCESS_TOKEN_TTL_SECONDS, mintAccessToken } from "@/lib/mcp/tokens";
 import { randomToken, sha256Hex } from "@/lib/mcp/token-crypto";
-import { computeS256Challenge } from "@/lib/mcp/oauth-validation";
+import { computeS256Challenge, isValidCodeVerifier } from "@/lib/mcp/oauth-validation";
+import { oauthInternalSecret } from "@/lib/mcp/internal-secret";
 
 function tokenError(error: string, description?: string, status = 400): Response {
   return corsJson(
@@ -72,6 +73,9 @@ export async function POST(req: Request) {
         "code, code_verifier, client_id and redirect_uri are required.",
       );
     }
+    if (!isValidCodeVerifier(codeVerifier)) {
+      return tokenError("invalid_request", "code_verifier has invalid PKCE syntax.");
+    }
     const refreshToken = randomToken();
     try {
       const result = await convex.mutation(api.oauth.exchangeAuthCode, {
@@ -81,8 +85,10 @@ export async function POST(req: Request) {
         codeChallenge: await computeS256Challenge(codeVerifier),
         refreshTokenHash: await sha256Hex(refreshToken),
         ip,
+        internalSecret: oauthInternalSecret(),
       });
-      if ("revoked" in result) return tokenError("invalid_grant", "Authorization code already used.");
+      if ("revoked" in result)
+        return tokenError("invalid_grant", "Authorization code already used.");
       return await successResponse(result, clientId, refreshToken);
     } catch (error) {
       return mapConvexError(error);
@@ -102,8 +108,10 @@ export async function POST(req: Request) {
         newTokenHash: await sha256Hex(newRefreshToken),
         clientId,
         ip,
+        internalSecret: oauthInternalSecret(),
       });
-      if ("revoked" in result) return tokenError("invalid_grant", "Refresh token reuse detected; grant revoked.");
+      if ("revoked" in result)
+        return tokenError("invalid_grant", "Refresh token reuse detected; grant revoked.");
       return await successResponse(result, clientId, newRefreshToken);
     } catch (error) {
       return mapConvexError(error);

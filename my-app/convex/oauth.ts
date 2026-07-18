@@ -3,20 +3,31 @@
 // raw secret and hash it; these functions only store/compare hashes and opaque
 // strings — no crypto here (Convex's default runtime lacks async crypto.subtle).
 // registerClient / exchangeAuthCode / rotateRefreshToken are public mutations
-// called server-side without user auth; they are IP-rate-limited, operate only
-// on hashes, and fail uniformly with `invalid_grant` so nothing is enumerable.
+// called server-side without user auth; an internal shared secret limits them
+// to the Next.js routes, then IP rate limits and opaque hashes protect the flow.
 import { ConvexError, v } from "convex/values";
 import { mutation, query, MutationCtx } from "./_generated/server";
 import { Doc, Id } from "./_generated/dataModel";
 import { getUserId } from "./helpers";
 import { rateLimiter } from "./rateLimits";
-import { isValidRedirectUri, matchesRegisteredRedirect } from "../src/lib/mcp/oauth-validation";
+import {
+  isValidCodeChallenge,
+  isValidRedirectUri,
+  matchesRegisteredRedirect,
+} from "../src/lib/mcp/oauth-validation";
 
 const AUTH_CODE_TTL_MS = 10 * 60 * 1000; // RFC 6749 §4.1.2: codes MUST be short-lived
 const REFRESH_TOKEN_TTL_MS = 90 * 24 * 60 * 60 * 1000;
 
 function invalidGrant(message: string): ConvexError<{ code: string; message: string }> {
   return new ConvexError({ code: "invalid_grant", message });
+}
+
+function assertInternalSecret(secret: string): void {
+  const configured = process.env.OAUTH_INTERNAL_SECRET;
+  if (!configured || secret !== configured) {
+    throw new ConvexError({ code: "internal_error", message: "Internal server error." });
+  }
 }
 
 async function revokeGrantById(ctx: MutationCtx, grantId: Id<"oauthGrants">): Promise<void> {
@@ -56,14 +67,26 @@ export const registerClient = mutation({
     clientName: v.string(),
     redirectUris: v.array(v.string()),
     ip: v.string(),
+    internalSecret: v.string(),
   },
   handler: async (ctx, args) => {
+    assertInternalSecret(args.internalSecret);
     await rateLimiter.limit(ctx, "oauthRegister", { key: args.ip, throws: true });
     // Defense in depth: the Next route already validated; never trust one layer.
     if (args.redirectUris.length === 0 || !args.redirectUris.every(isValidRedirectUri)) {
       throw new ConvexError({
         code: "invalid_redirect_uri",
         message: "redirect_uris must be https, or http on localhost only, without fragments.",
+      });
+    }
+    const existing = await ctx.db
+      .query("oauthClients")
+      .withIndex("by_client_id", (q) => q.eq("clientId", args.clientId))
+      .first();
+    if (existing) {
+      throw new ConvexError({
+        code: "invalid_client_metadata",
+        message: "Client registration failed.",
       });
     }
     await ctx.db.insert("oauthClients", {
@@ -112,7 +135,13 @@ export const createAuthCode = mutation({
       .withIndex("by_client_id", (q) => q.eq("clientId", args.clientId))
       .unique();
     if (!client || !matchesRegisteredRedirect(args.redirectUri, client.redirectUris)) {
-      throw new ConvexError({ code: "invalid_request", message: "Unknown client or redirect URI." });
+      throw new ConvexError({
+        code: "invalid_request",
+        message: "Unknown client or redirect URI.",
+      });
+    }
+    if (!isValidCodeChallenge(args.codeChallenge)) {
+      throw new ConvexError({ code: "invalid_request", message: "Invalid PKCE code challenge." });
     }
     await ctx.db.insert("oauthAuthCodes", {
       codeHash: args.codeHash,
@@ -142,8 +171,10 @@ export const exchangeAuthCode = mutation({
     codeChallenge: v.string(),
     refreshTokenHash: v.string(),
     ip: v.string(),
+    internalSecret: v.string(),
   },
   handler: async (ctx, args) => {
+    assertInternalSecret(args.internalSecret);
     await rateLimiter.limit(ctx, "oauthTokenExchange", { key: args.ip, throws: true });
     const now = Date.now();
     const code = await ctx.db
@@ -151,21 +182,19 @@ export const exchangeAuthCode = mutation({
       .withIndex("by_code_hash", (q) => q.eq("codeHash", args.codeHash))
       .unique();
     if (!code) throw invalidGrant("Unknown authorization code.");
+    if (code.expiresAt < now) throw invalidGrant("Authorization code expired.");
     if (code.usedAt !== undefined) {
-      // Reuse of a consumed code is theft evidence: revoke the grant and RETURN
+      // Reuse of a consumed code is theft evidence: revoke only the grant this
+      // code created and RETURN
       // (not throw) so the revocation commits — a throwing mutation rolls back
       // all its writes in Convex. The token route maps `{ revoked }` to 400
       // invalid_grant.
-      const grant = await findGrantForUserClient(ctx, code.userId, code.clientId);
-      if (grant) await revokeGrantById(ctx, grant._id);
+      if (code.grantId) await revokeGrantById(ctx, code.grantId);
       return { revoked: true as const };
     }
-    if (code.expiresAt < now) throw invalidGrant("Authorization code expired.");
     if (code.clientId !== args.clientId) throw invalidGrant("Client mismatch.");
     if (code.redirectUri !== args.redirectUri) throw invalidGrant("redirect_uri mismatch.");
     if (code.codeChallenge !== args.codeChallenge) throw invalidGrant("PKCE verification failed.");
-
-    await ctx.db.patch(code._id, { usedAt: now });
 
     let grant = await findGrantForUserClient(ctx, code.userId, code.clientId);
     if (grant) {
@@ -184,6 +213,8 @@ export const exchangeAuthCode = mutation({
       });
       grant = (await ctx.db.get(grantId))!;
     }
+
+    await ctx.db.patch(code._id, { usedAt: now, grantId: grant._id });
 
     await ctx.db.insert("oauthRefreshTokens", {
       tokenHash: args.refreshTokenHash,
@@ -210,8 +241,10 @@ export const rotateRefreshToken = mutation({
     newTokenHash: v.string(),
     clientId: v.string(),
     ip: v.string(),
+    internalSecret: v.string(),
   },
   handler: async (ctx, args) => {
+    assertInternalSecret(args.internalSecret);
     await rateLimiter.limit(ctx, "oauthTokenExchange", { key: args.ip, throws: true });
     const now = Date.now();
     const token = await ctx.db
