@@ -42,7 +42,7 @@ export function ConnectedApps() {
           No connected apps yet.
         </p>
       ) : (
-        <ul className="mt-4 divide-y divide-border/40 rounded-lg border border-border/40 bg-surface/60">
+        <ul className="mt-4 max-h-80 divide-y divide-border/40 overflow-y-auto rounded-lg border border-border/40 bg-surface/60">
           {grants.map((grant) => (
             <li key={grant._id} className="flex items-center justify-between gap-3 px-4 py-3">
               <div className="min-w-0">
