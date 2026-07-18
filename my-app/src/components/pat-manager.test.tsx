@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, test, vi, beforeEach } from "vitest";
 import { getFunctionName } from "convex/server";
 import { PatManager } from "./pat-manager";
-import { PAT_PREFIX, sha256Hex } from "@/lib/mcp/tokens";
+import { PAT_PREFIX, sha256Hex } from "@/lib/mcp/token-crypto";
 
 const mockUseQuery = vi.fn();
 const mockCreate = vi.fn();

@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vitest";
 import { exportPKCS8, generateKeyPair } from "jose";
-import { mintAccessToken, sha256Hex } from "./tokens";
+import { mintAccessToken } from "./tokens";
+import { sha256Hex } from "./token-crypto";
 import { createMcpTokenVerifier, McpExtra } from "./verify-token";
 
 const ISSUER = "https://example.test";

@@ -7,13 +7,8 @@
 import { createLocalJWKSet, jwtVerify } from "jose";
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "../../../convex/_generated/api";
-import {
-  getPublicJwks,
-  mintPatBridgeToken,
-  sha256Hex,
-  MCP_JWT_AUDIENCE,
-  PAT_PREFIX,
-} from "./tokens";
+import { getPublicJwks, mintPatBridgeToken, MCP_JWT_AUDIENCE } from "./tokens";
+import { PAT_PREFIX, sha256Hex } from "./token-crypto";
 
 export type McpExtra = { userId: string; convexToken: string };
 

@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/dialog";
 import { ConfirmDeleteButton } from "@/components/confirm-delete-button";
 import { formatWearDate } from "@/lib/format";
-import { PAT_PREFIX, randomToken, sha256Hex } from "@/lib/mcp/tokens";
+import { PAT_PREFIX, randomToken, sha256Hex } from "@/lib/mcp/token-crypto";
 
 export function PatManager() {
   const tokens = useQuery(api.apiTokens.list);

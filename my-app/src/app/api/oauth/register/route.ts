@@ -3,7 +3,7 @@ import { ConvexHttpClient } from "convex/browser";
 import { ConvexError } from "convex/values";
 import { api } from "../../../../../convex/_generated/api";
 import { corsJson, corsPreflight } from "@/lib/mcp/cors";
-import { randomHex } from "@/lib/mcp/tokens";
+import { randomHex } from "@/lib/mcp/token-crypto";
 import { isValidRedirectUri } from "@/lib/mcp/oauth-validation";
 
 const MAX_REDIRECT_URIS = 10;
