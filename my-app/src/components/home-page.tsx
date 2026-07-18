@@ -117,7 +117,7 @@ export function HomePage() {
         <div className="flex items-center gap-2">
           <Button
             asChild
-            variant="ghost"
+            variant="outline"
             size="sm"
             aria-label="Connections settings"
             className="gap-2"

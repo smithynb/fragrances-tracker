@@ -16,7 +16,7 @@ export default function ConnectionsPage() {
     <main className="min-h-dvh bg-bg">
       <div className="mx-auto w-full max-w-2xl px-5 py-8">
         <div className="flex items-center gap-3">
-          <Button asChild variant="ghost" size="sm" aria-label="Back to collection">
+          <Button asChild variant="outline" size="sm" aria-label="Back to collection">
             <Link href="/">
               <ArrowLeft className="h-4 w-4" />
             </Link>
