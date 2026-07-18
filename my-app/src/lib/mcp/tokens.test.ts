@@ -134,4 +134,42 @@ describe("getPublicJwks", () => {
     expect(protectedHeader.kid).toBe("mcp-stage-1");
     expect((keys[0] as Record<string, unknown>).kid).toBe("mcp-stage-1");
   });
+
+  test("verifies old and new unexpired tokens during key rotation overlap", async () => {
+    const oldPem = await testPem();
+    const newPem = await testPem();
+    const oldToken = await mintAccessToken({
+      userId: "user123",
+      grantId: "old-grant",
+      clientId: "client789",
+      scope: "read write",
+      privateKeyPem: oldPem,
+      issuer: ISSUER,
+      kid: "mcp-old-1",
+    });
+    const newToken = await mintAccessToken({
+      userId: "user123",
+      grantId: "new-grant",
+      clientId: "client789",
+      scope: "read write",
+      privateKeyPem: newPem,
+      issuer: ISSUER,
+      kid: "mcp-new-1",
+    });
+    const oldJwk = (await getPublicJwks(oldPem, "mcp-old-1")).keys[0];
+    vi.stubEnv("MCP_EXTRA_PUBLIC_JWKS", JSON.stringify([oldJwk]));
+    const jwks = createLocalJWKSet(await getPublicJwks(newPem, "mcp-new-1"));
+
+    const oldResult = await jwtVerify(oldToken, jwks, {
+      issuer: ISSUER,
+      audience: MCP_JWT_AUDIENCE,
+    });
+    const newResult = await jwtVerify(newToken, jwks, {
+      issuer: ISSUER,
+      audience: MCP_JWT_AUDIENCE,
+    });
+
+    expect(oldResult.protectedHeader.kid).toBe("mcp-old-1");
+    expect(newResult.protectedHeader.kid).toBe("mcp-new-1");
+  });
 });
