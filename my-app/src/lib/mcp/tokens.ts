@@ -6,7 +6,6 @@ import "server-only";
 import { SignJWT, importPKCS8, exportJWK } from "jose";
 
 export const MCP_JWT_AUDIENCE = "fragrances-mcp";
-export const MCP_JWT_KID = "mcp-1";
 export const ACCESS_TOKEN_TTL_SECONDS = 900; // 15 min
 export const PAT_BRIDGE_TTL_SECONDS = 300; // 5 min
 
@@ -27,9 +26,11 @@ async function mint(
   ttlSeconds: number,
   privateKeyPem?: string,
   issuer?: string,
+  kid?: string,
 ): Promise<string> {
+  const signingKid = kid ?? requireEnv(process.env.MCP_JWT_KID, "MCP_JWT_KID");
   return await new SignJWT(claims)
-    .setProtectedHeader({ alg: "RS256", kid: MCP_JWT_KID })
+    .setProtectedHeader({ alg: "RS256", kid: signingKid })
     .setSubject(subject)
     .setIssuer(issuer ?? requireEnv(process.env.NEXT_PUBLIC_APP_URL, "NEXT_PUBLIC_APP_URL"))
     .setAudience(MCP_JWT_AUDIENCE)
@@ -47,6 +48,7 @@ export async function mintAccessToken(opts: {
   ttlSeconds?: number;
   privateKeyPem?: string;
   issuer?: string;
+  kid?: string;
 }): Promise<string> {
   return await mint(
     `${opts.userId}|mcp:${opts.grantId}`,
@@ -54,6 +56,7 @@ export async function mintAccessToken(opts: {
     opts.ttlSeconds ?? ACCESS_TOKEN_TTL_SECONDS,
     opts.privateKeyPem,
     opts.issuer,
+    opts.kid,
   );
 }
 
@@ -63,6 +66,7 @@ export async function mintPatBridgeToken(opts: {
   tokenId: string;
   privateKeyPem?: string;
   issuer?: string;
+  kid?: string;
 }): Promise<string> {
   return await mint(
     `${opts.userId}|pat:${opts.tokenId}`,
@@ -70,6 +74,7 @@ export async function mintPatBridgeToken(opts: {
     PAT_BRIDGE_TTL_SECONDS,
     opts.privateKeyPem,
     opts.issuer,
+    opts.kid,
   );
 }
 
@@ -78,10 +83,14 @@ export async function mintPatBridgeToken(opts: {
  * extra public keys from MCP_EXTRA_PUBLIC_JWKS (JSON array) — used to publish a
  * dev keypair's public half alongside prod (see verification sub-plan).
  */
-export async function getPublicJwks(privateKeyPem?: string): Promise<{ keys: object[] }> {
+export async function getPublicJwks(
+  privateKeyPem?: string,
+  kid?: string,
+): Promise<{ keys: object[] }> {
   const jwk = (await exportJWK(await signingKey(privateKeyPem))) as Record<string, unknown>;
   for (const f of ["d", "p", "q", "dp", "dq", "qi"]) delete jwk[f];
-  const keys: object[] = [{ ...jwk, kid: MCP_JWT_KID, alg: "RS256", use: "sig" }];
+  const signingKid = kid ?? requireEnv(process.env.MCP_JWT_KID, "MCP_JWT_KID");
+  const keys: object[] = [{ ...jwk, kid: signingKid, alg: "RS256", use: "sig" }];
   const extra = process.env.MCP_EXTRA_PUBLIC_JWKS;
   if (extra) keys.push(...(JSON.parse(extra) as object[]));
   return { keys };
