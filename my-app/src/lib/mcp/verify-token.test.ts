@@ -1,10 +1,13 @@
-import { describe, expect, test } from "vitest";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { exportPKCS8, generateKeyPair } from "jose";
 import { mintAccessToken, sha256Hex } from "./tokens";
 import { createMcpTokenVerifier, McpExtra } from "./verify-token";
 
 const ISSUER = "https://example.test";
 const REQ = new Request("https://example.test/api/mcp");
+
+beforeEach(() => vi.stubEnv("MCP_JWT_KID", "mcp-test-1"));
+afterEach(() => vi.unstubAllEnvs());
 
 async function makeVerifier(overrides: Partial<Parameters<typeof createMcpTokenVerifier>[0]> = {}) {
   const { privateKey } = await generateKeyPair("RS256", { extractable: true });

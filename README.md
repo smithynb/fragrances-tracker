@@ -157,6 +157,7 @@ cd my-app && bun scripts/generate-mcp-keypair.mjs
 
 | Var | Where | Value |
 |---|---|---|
+| `MCP_JWT_KID` | Vercel + `.env.local` | Key ID passed to the generator; must identify `MCP_JWT_PRIVATE_KEY` |
 | `MCP_JWT_PRIVATE_KEY` | Vercel + `.env.local` | PKCS8 PEM from the generator script |
 | `NEXT_PUBLIC_APP_URL` | Vercel + `.env.local` | App origin; doubles as the JWT issuer |
 | `MCP_EXTRA_PUBLIC_JWKS` | Vercel (optional) | JSON array of extra public JWKs (dev-key strategy below) |
@@ -197,7 +198,8 @@ get a fresh random hostname each run, so re-set these env vars per session.
 1. Generate a new keypair with a **new `kid`**.
 2. Serve **both** public keys via `MCP_EXTRA_PUBLIC_JWKS` so tokens signed by the old key still
    verify (access tokens live ≤15 min, PAT bridge tokens ≤5 min).
-3. Switch `MCP_JWT_PRIVATE_KEY` to the new private key.
+3. Atomically switch `MCP_JWT_PRIVATE_KEY` and `MCP_JWT_KID` to the new pair. New tokens use the
+   new `kid`; already-issued tokens continue matching the old public JWK.
 4. After 24 h — well past every old token's expiry — drop the old public key from
    `MCP_EXTRA_PUBLIC_JWKS`.
 
