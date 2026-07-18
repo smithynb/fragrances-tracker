@@ -159,7 +159,7 @@ cd my-app && bun scripts/generate-mcp-keypair.mjs
 |---|---|---|
 | `MCP_JWT_PRIVATE_KEY` | Vercel + `.env.local` | PKCS8 PEM from the generator script |
 | `NEXT_PUBLIC_APP_URL` | Vercel + `.env.local` | App origin; doubles as the JWT issuer |
-| `MCP_EXTRA_PUBLIC_JWKS` | Vercel (optional) | JSON array of extra public JWKs (dev-key strategy below) |
+| `MCP_EXTRA_PUBLIC_JWKS` | Vercel (optional) | Same-environment rotation keys; production must never include dev/staging keys |
 | `MCP_JWT_ISSUER` | Convex dashboard | = the app origin of that environment |
 | `MCP_JWKS_URL` | Convex dashboard | JWKS URL **reachable from Convex Cloud** |
 
@@ -172,25 +172,41 @@ Smoke-test any deployment's OAuth surface:
 ### Local development
 
 Convex Cloud verifies MCP access tokens by fetching `MCP_JWKS_URL`, and it **cannot reach
-`localhost`**. Resolve it with a dedicated dev keypair whose *public* half is published in the
-**production** JWKS:
+`localhost`**. Never publish a development public key in the production JWKS: every key listed
+there is authorized to mint production tokens, regardless of where its private half is stored.
 
-1. `bun scripts/generate-mcp-keypair.mjs mcp-dev-1` — put the private PEM in `.env.local`'s
-   `MCP_JWT_PRIVATE_KEY` (dev machine only; never in Vercel). Copy the printed public JWK.
-2. Add that public JWK to Vercel's `MCP_EXTRA_PUBLIC_JWKS` (a JSON array) and redeploy. Confirm both
-   keys are served: `curl -s https://<prod-app>/api/oauth/jwks` shows `kid` `mcp-1` and `mcp-dev-1`.
-3. In the Convex **dev** dashboard set `MCP_JWT_ISSUER=http://localhost:3000` and
-   `MCP_JWKS_URL=https://<prod-app>/api/oauth/jwks`.
+Use one of these non-production workflows:
 
-**Why this is safe:** the JWKS contains only public key material; the dev private key never leaves
-your machine; and a dev-signed token presented to **production** Convex is rejected because prod's
-`customJwt` provider requires `iss = https://<prod-app>` while dev tokens carry
-`iss = http://localhost:3000`.
+1. **Tunnel (preferred):** generate a development keypair, run
+   `cloudflared tunnel --url http://localhost:3000`, and use the tunnel origin for
+   `NEXT_PUBLIC_APP_URL`, development Convex's `MCP_JWT_ISSUER`, and
+   `<tunnel-origin>/api/oauth/jwks` for `MCP_JWKS_URL`. Quick-tunnel hostnames change between
+   sessions, so update all three together.
+2. **Stable staging JWKS:** publish the development public key only through a staging deployment's
+   `MCP_EXTRA_PUBLIC_JWKS`, and point development Convex at that staging JWKS. This grants the dev
+   key access to staging, so staging must contain no production data or credentials.
 
-**Alternative** (if publishing the dev key is unacceptable): run
-`cloudflared tunnel --url http://localhost:3000` and use the tunnel URL as both `NEXT_PUBLIC_APP_URL`
-(so minted tokens carry that issuer) and the Convex `MCP_JWT_ISSUER` / `MCP_JWKS_URL`. Quick tunnels
-get a fresh random hostname each run, so re-set these env vars per session.
+`MCP_EXTRA_PUBLIC_JWKS` in production is reserved for overlapping **production** keys during
+rotation. It must never contain staging or development keys.
+
+### Environment key ownership
+
+| Environment | Private key storage                   | Public-key trust                                      | Convex configuration                              |
+| ----------- | ------------------------------------- | ----------------------------------------------------- | ------------------------------------------------- |
+| Production  | Vercel Production variables only      | Production keys only                                  | Production issuer and production JWKS             |
+| Staging     | Stable staging/Preview variables only | Staging keys; optional dev keys                       | Staging issuer and staging JWKS                   |
+| Development | Developer `.env.local` only           | Tunnel JWKS or explicitly non-production staging JWKS | Development/tunnel issuer and non-production JWKS |
+
+After configuring production, prove that it rejects a development key even when a forged token
+claims the production issuer:
+
+```bash
+MCP_DEV_JWT_PRIVATE_KEY='-----BEGIN PRIVATE KEY-----…' \
+MCP_DEV_JWT_KID=mcp-dev-1 \
+bun my-app/scripts/verify-mcp-environment-isolation.mjs https://<prod-app>
+```
+
+The probe must print `PASS` with HTTP 401 before the MCP epic is merged.
 
 ### Key rotation
 
