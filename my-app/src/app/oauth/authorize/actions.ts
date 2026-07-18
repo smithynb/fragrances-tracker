@@ -5,7 +5,7 @@ import { fetchMutation, fetchQuery } from "convex/nextjs";
 import { convexAuthNextjsToken } from "@convex-dev/auth/nextjs/server";
 import { redirect } from "next/navigation";
 import { api } from "../../../../convex/_generated/api";
-import { randomToken, sha256Hex } from "@/lib/mcp/tokens";
+import { randomToken, sha256Hex } from "@/lib/mcp/token-crypto";
 import { matchesRegisteredRedirect } from "@/lib/mcp/oauth-validation";
 
 /** Builds redirect_uri?k=v... preserving existing query params on the URI. */

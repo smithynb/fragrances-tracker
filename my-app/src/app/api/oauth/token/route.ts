@@ -3,7 +3,8 @@ import { ConvexHttpClient } from "convex/browser";
 import { ConvexError } from "convex/values";
 import { api } from "../../../../../convex/_generated/api";
 import { corsJson, corsPreflight } from "@/lib/mcp/cors";
-import { ACCESS_TOKEN_TTL_SECONDS, mintAccessToken, randomToken, sha256Hex } from "@/lib/mcp/tokens";
+import { ACCESS_TOKEN_TTL_SECONDS, mintAccessToken } from "@/lib/mcp/tokens";
+import { randomToken, sha256Hex } from "@/lib/mcp/token-crypto";
 import { computeS256Challenge } from "@/lib/mcp/oauth-validation";
 
 function tokenError(error: string, description?: string, status = 400): Response {
