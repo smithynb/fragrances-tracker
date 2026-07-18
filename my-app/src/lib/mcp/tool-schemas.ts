@@ -4,8 +4,8 @@
 import { z } from "zod";
 import { MAX_SPRAYS } from "@/lib/constants";
 
-const bottleId = z.string().describe("Bottle ID from list_bottles / get_collection_stats.");
-const wearLogId = z.string().describe("Wear log ID from list_wear_logs.");
+const bottleId = z.string().describe("Bottle ID from list_fragrances / get_fragrance_stats.");
+const wearLogId = z.string().describe("Wear log ID from list_fragrance_wears.");
 
 const name = z.string().min(1).max(200);
 const brand = z.string().max(200);

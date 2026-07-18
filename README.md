@@ -113,8 +113,8 @@ The app exposes a remote **[Model Context Protocol](https://modelcontextprotocol
 `https://<app-domain>/api/mcp` (streamable HTTP, stateless). Connect your own AI agent to read and
 update your collection and to get insight-shaped data for one-shot analysis. Auth is **OAuth 2.1**
 (for claude.ai / ChatGPT / Claude Code) plus **personal access tokens** (for header-based CLI
-clients). Twelve tools are exposed: CRUD over bottles and wear logs, plus `list_wear_logs`,
-`get_collection_stats`, and `get_collection_snapshot`. Insights are computed by the connecting
+clients). Twelve tools are exposed: CRUD over bottles and wear logs, plus `list_fragrance_wears`,
+`get_fragrance_stats`, and `get_fragrance_collection`. Insights are computed by the connecting
 agent — the server does no LLM calls.
 
 ### Connect from claude.ai or ChatGPT

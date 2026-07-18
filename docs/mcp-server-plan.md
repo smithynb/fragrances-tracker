@@ -132,7 +132,7 @@ const handler = createMcpHandler(
   (server) => {
     // NOTE (spike C2): use registerTool, NOT the deprecated server.tool(...) —
     // see docs/superpowers/plans/2026-07-06-mcp-0-spike-findings.md.
-    server.registerTool("add_bottle",
+    server.registerTool("add_fragrance",
       { description: "Add a fragrance bottle to the user's collection…", inputSchema: addBottleShape },
       async (args, { authInfo }) => {
         const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
@@ -172,25 +172,25 @@ All secrets stored **hashed only**; raw values returned exactly once.
 
 | Tool | Input schema (zod, mirrors server bounds) | Convex fn |
 |---|---|---|
-| `list_bottles` | `{}` | `api.bottles.listBottles` |
-| `get_bottle` | `{ bottleId: string }` | `api.bottles.getBottle` |
-| `add_bottle` | `{ name: 1–200, brand? ≤200, sizeMl? >0 ≤10000, tags? ≤20×≤50, comments? ≤2000 }` | `api.bottles.addBottle` |
-| `update_bottle` | same, all optional; clearable fields `.nullable()` (null clears — matches `buildPatch`) + `bottleId` | `api.bottles.updateBottle` |
-| `delete_bottle` | `{ bottleId }` (cascades wear logs — say so in description) | `api.bottles.deleteBottle` |
-| `toggle_favorite` | `{ bottleId }` | `api.bottles.toggleFavorite` |
-| `add_wear_log` | `{ bottleId, wornAt: epoch-ms (description explains ISO→ms), sprays: int 1–100, context? ≤200, rating? 1–10, comment? ≤2000 }` | `api.wearLogs.addWearLog` |
-| `update_wear_log` | partial, `.nullable()` clearables + `wearLogId` | `api.wearLogs.updateWearLog` |
-| `delete_wear_log` | `{ wearLogId }` | `api.wearLogs.deleteWearLog` |
+| `list_fragrances` | `{}` | `api.bottles.listBottles` |
+| `get_fragrance` | `{ bottleId: string }` | `api.bottles.getBottle` |
+| `add_fragrance` | `{ name: 1–200, brand? ≤200, sizeMl? >0 ≤10000, tags? ≤20×≤50, comments? ≤2000 }` | `api.bottles.addBottle` |
+| `update_fragrance` | same, all optional; clearable fields `.nullable()` (null clears — matches `buildPatch`) + `bottleId` | `api.bottles.updateBottle` |
+| `delete_fragrance` | `{ bottleId }` (cascades wear logs — say so in description) | `api.bottles.deleteBottle` |
+| `toggle_favorite_fragrance` | `{ bottleId }` | `api.bottles.toggleFavorite` |
+| `log_fragrance_wear` | `{ bottleId, wornAt: epoch-ms (description explains ISO→ms), sprays: int 1–100, context? ≤200, rating? 1–10, comment? ≤2000 }` | `api.wearLogs.addWearLog` |
+| `update_fragrance_wear` | partial, `.nullable()` clearables + `wearLogId` | `api.wearLogs.updateWearLog` |
+| `delete_fragrance_wear` | `{ wearLogId }` | `api.wearLogs.deleteWearLog` |
 
-IDs pass through as opaque strings (Convex `v.id()` validates); descriptions tell agents to get IDs from `list_bottles`. Zod gives early feedback; Convex validators stay authoritative.
+IDs pass through as opaque strings (Convex `v.id()` validates); descriptions tell agents to get IDs from `list_fragrances`. Zod gives early feedback; Convex validators stay authoritative.
 
 ### New insight queries — `convex/insights.ts`
 
 | Tool | Input | Behavior |
 |---|---|---|
-| `list_wear_logs` | `{ bottleId?, from?: ms, to?: ms, limit: int ≤500 = 100 }` | Range query on `by_user_time` / `by_user_bottle_time` (`.gte/.lte` + `.take`) |
-| `get_collection_stats` | `{}` | Per-bottle `{name, brand, wears, sprays, avgRating, lastWornAt}` (reuse `listBottleStats` aggregation) + totals: bottle count, total wears/sprays, most/least worn, favorites, unworn bottles |
-| `get_collection_snapshot` | `{ recentLogsPerBottle: int ≤20 = 5 }` | Compact full export — every bottle + stats + N recent logs each. Built for one-shot agent analysis (summaries, rotation gaps, seasonal patterns) |
+| `list_fragrance_wears` | `{ bottleId?, from?: ms, to?: ms, limit: int ≤500 = 100 }` | Range query on `by_user_time` / `by_user_bottle_time` (`.gte/.lte` + `.take`) |
+| `get_fragrance_stats` | `{}` | Per-bottle `{name, brand, wears, sprays, avgRating, lastWornAt}` (reuse `listBottleStats` aggregation) + totals: bottle count, total wears/sprays, most/least worn, favorites, unworn bottles |
+| `get_fragrance_collection` | `{ recentLogsPerBottle: int ≤20 = 5 }` | Compact full export — every bottle + stats + N recent logs each. Built for one-shot agent analysis (summaries, rotation gaps, seasonal patterns) |
 
 ### Rate limits (`convex/rateLimits.ts` additions)
 
@@ -253,7 +253,7 @@ This document is the **epic architecture spec**. Implementation is broken into f
 
 - [x] **1. Compatibility spike (0.5d)** — [`2026-07-06-mcp-1-compat-spike.md`](superpowers/plans/2026-07-06-mcp-1-compat-spike.md) — **done (PR #67).** pin `mcp-handler`/SDK/zod/jose, verify tool-registration API (`registerTool` vs `tool`), `withMcpAuth`/401 shape, `authInfo.extra` passthrough, jose RS256+JWKS recipe. Produces findings doc `2026-07-06-mcp-0-spike-findings.md`.
 - [x] **2. OAuth + token foundation (1.5d)** — [`2026-07-06-mcp-2-oauth-foundation.md`](superpowers/plans/2026-07-06-mcp-2-oauth-foundation.md) — **done (PR #68).** tables, crypto/JWT helpers (raw secrets + hashing in Next only; Convex compares hashes), `oauth.ts`/`apiTokens.ts` test-first (single-use codes, PKCE mismatch, rotation reuse revocation, PAT revocation), customJwt provider, JWKS/metadata/DCR/token endpoints with exact RFC 6749 error semantics + CORS.
-- [x] **3. Insights + MCP tools (1d)** — [`2026-07-06-mcp-3-insights-mcp-tools.md`](superpowers/plans/2026-07-06-mcp-3-insights-mcp-tools.md) — **done (PR #69).** `insights.ts` (new aggregation — `listBottleStats` lacks `lastWornAt` and stays untouched), dual-mode verifier, zod schemas, `/api/mcp` with 12 tools (13 in §5 double-counts `list_wear_logs`). Scopes carried, not enforced (v1, §10).
+- [x] **3. Insights + MCP tools (1d)** — [`2026-07-06-mcp-3-insights-mcp-tools.md`](superpowers/plans/2026-07-06-mcp-3-insights-mcp-tools.md) — **done (PR #69).** `insights.ts` (new aggregation — `listBottleStats` lacks `lastWornAt` and stays untouched), dual-mode verifier, zod schemas, `/api/mcp` with 12 tools (13 in §5 double-counts `list_fragrance_wears`). Scopes carried, not enforced (v1, §10).
 - [x] **4. Consent + sign-in redirect + settings UI (1d)** — [`2026-07-06-mcp-4-consent-settings-ui.md`](superpowers/plans/2026-07-06-mcp-4-consent-settings-ui.md) — **done (PR #70).** safe `?redirect=` passthrough (sign-in currently always lands on `/`), `/oauth/authorize` with locked render-vs-bounce error semantics + `state` passthrough, `/settings/connections` (first settings route) + header nav.
 - [x] **5. Verification + docs (0.5–1d)** — [`2026-07-06-mcp-5-verification-docs.md`](superpowers/plans/2026-07-06-mcp-5-verification-docs.md) — **done (this PR).** smoke script (`my-app/scripts/oauth-smoke.sh`, 16/16 local), inspector/Claude Code/claude.ai/ChatGPT checklists, local-JWKS strategy (dedicated dev keypair published via `MCP_EXTRA_PUBLIC_JWKS` — no private-key reuse), README + key rotation docs.
 

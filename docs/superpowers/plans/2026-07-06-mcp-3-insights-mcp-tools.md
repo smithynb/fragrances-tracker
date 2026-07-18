@@ -625,13 +625,13 @@ import {
 } from "./tool-schemas";
 
 describe("tool schemas", () => {
-  test("update_bottle accepts null to clear optional fields but not for name", () => {
+  test("update_fragrance accepts null to clear optional fields but not for name", () => {
     const schema = z.object(updateBottleShape);
     expect(schema.safeParse({ bottleId: "x", brand: null, sizeMl: null }).success).toBe(true);
     expect(schema.safeParse({ bottleId: "x", name: null }).success).toBe(false);
   });
 
-  test("add_wear_log enforces integer spray bounds and rating range", () => {
+  test("log_fragrance_wear enforces integer spray bounds and rating range", () => {
     const schema = z.object(addWearLogShape);
     const base = { bottleId: "x", wornAt: 1700000000000 };
     expect(schema.safeParse({ ...base, sprays: 3 }).success).toBe(true);
@@ -641,7 +641,7 @@ describe("tool schemas", () => {
     expect(schema.safeParse({ ...base, sprays: 3, rating: 11 }).success).toBe(false);
   });
 
-  test("list_wear_logs bounds limit and snapshot bounds recentLogsPerBottle", () => {
+  test("list_fragrance_wears bounds limit and snapshot bounds recentLogsPerBottle", () => {
     expect(z.object(listWearLogsShape).safeParse({ limit: 501 }).success).toBe(false);
     expect(z.object(listWearLogsShape).safeParse({}).success).toBe(true);
     expect(z.object(getCollectionSnapshotShape).safeParse({ recentLogsPerBottle: 21 }).success).toBe(false);
@@ -664,8 +664,8 @@ Expected: FAIL — cannot resolve `./tool-schemas`.
 import { z } from "zod";
 import { MAX_SPRAYS } from "@/lib/constants";
 
-const bottleId = z.string().describe("Bottle ID from list_bottles / get_collection_stats.");
-const wearLogId = z.string().describe("Wear log ID from list_wear_logs.");
+const bottleId = z.string().describe("Bottle ID from list_fragrances / get_fragrance_stats.");
+const wearLogId = z.string().describe("Wear log ID from list_fragrance_wears.");
 
 const name = z.string().min(1).max(200);
 const brand = z.string().max(200);
@@ -824,19 +824,19 @@ const handler = createMcpHandler(
 
     // ── Bottles ───────────────────────────────────────────────────────────
     server.registerTool(
-      "list_bottles",
+      "list_fragrances",
       { description: "List every fragrance bottle in the user's collection, newest first. Start here to get bottle IDs.", inputSchema: shapes.listBottlesShape },
       async (_args, { authInfo }) =>
         run(() => convexFor(extraOf(authInfo)).query(api.bottles.listBottles, {})),
     );
     server.registerTool(
-      "get_bottle",
+      "get_fragrance",
       { description: "Get one bottle by ID. Returns null if it doesn't exist or isn't the user's.", inputSchema: shapes.getBottleShape },
       async (args, { authInfo }) =>
         run(() => convexFor(extraOf(authInfo)).query(api.bottles.getBottle, args)),
     );
     server.registerTool(
-      "add_bottle",
+      "add_fragrance",
       { description: "Add a fragrance bottle to the user's collection. Returns the new bottle ID.", inputSchema: shapes.addBottleShape },
       async (args, { authInfo }) =>
         run(async () => ({
@@ -844,19 +844,19 @@ const handler = createMcpHandler(
         })),
     );
     server.registerTool(
-      "update_bottle",
+      "update_fragrance",
       { description: "Update a bottle. Omit a field to leave it unchanged; pass null to clear it (name cannot be cleared).", inputSchema: shapes.updateBottleShape },
       async (args, { authInfo }) =>
         run(() => convexFor(extraOf(authInfo)).mutation(api.bottles.updateBottle, args)),
     );
     server.registerTool(
-      "delete_bottle",
+      "delete_fragrance",
       { description: "Delete a bottle AND all of its wear logs (cascade). Irreversible — confirm with the user first.", inputSchema: shapes.deleteBottleShape },
       async (args, { authInfo }) =>
         run(() => convexFor(extraOf(authInfo)).mutation(api.bottles.deleteBottle, args)),
     );
     server.registerTool(
-      "toggle_favorite",
+      "toggle_favorite_fragrance",
       { description: "Toggle a bottle's favorite flag.", inputSchema: shapes.toggleFavoriteShape },
       async (args, { authInfo }) =>
         run(() => convexFor(extraOf(authInfo)).mutation(api.bottles.toggleFavorite, args)),
@@ -864,7 +864,7 @@ const handler = createMcpHandler(
 
     // ── Wear logs ─────────────────────────────────────────────────────────
     server.registerTool(
-      "add_wear_log",
+      "log_fragrance_wear",
       { description: "Log a wear of a bottle. wornAt is epoch milliseconds and must not be in the future.", inputSchema: shapes.addWearLogShape },
       async (args, { authInfo }) =>
         run(async () => ({
@@ -872,13 +872,13 @@ const handler = createMcpHandler(
         })),
     );
     server.registerTool(
-      "update_wear_log",
+      "update_fragrance_wear",
       { description: "Update a wear log. Omit a field to keep it; pass null to clear context/rating/comment.", inputSchema: shapes.updateWearLogShape },
       async (args, { authInfo }) =>
         run(() => convexFor(extraOf(authInfo)).mutation(api.wearLogs.updateWearLog, args)),
     );
     server.registerTool(
-      "delete_wear_log",
+      "delete_fragrance_wear",
       { description: "Delete a single wear log.", inputSchema: shapes.deleteWearLogShape },
       async (args, { authInfo }) =>
         run(() => convexFor(extraOf(authInfo)).mutation(api.wearLogs.deleteWearLog, args)),
@@ -886,19 +886,19 @@ const handler = createMcpHandler(
 
     // ── Insights ──────────────────────────────────────────────────────────
     server.registerTool(
-      "list_wear_logs",
+      "list_fragrance_wears",
       { description: "List wear logs newest-first, optionally filtered by bottle and/or time range (epoch ms). Default limit 100, max 500.", inputSchema: shapes.listWearLogsShape },
       async (args, { authInfo }) =>
         run(() => convexFor(extraOf(authInfo)).query(api.insights.listWearLogsFiltered, args)),
     );
     server.registerTool(
-      "get_collection_stats",
+      "get_fragrance_stats",
       { description: "Per-bottle stats (wears, sprays, avgRating, lastWornAt) plus collection totals (most/least worn, favorites, unworn count). Ideal first call for analysis.", inputSchema: shapes.getCollectionStatsShape },
       async (_args, { authInfo }) =>
         run(() => convexFor(extraOf(authInfo)).query(api.insights.collectionStats, {})),
     );
     server.registerTool(
-      "get_collection_snapshot",
+      "get_fragrance_collection",
       { description: "Compact full export: every bottle with stats, tags, notes, and N recent wear logs each. Built for one-shot analysis (rotation gaps, seasonal patterns, recommendations).", inputSchema: shapes.getCollectionSnapshotShape },
       async (args, { authInfo }) =>
         run(() => convexFor(extraOf(authInfo)).query(api.insights.collectionSnapshot, args)),
@@ -916,7 +916,7 @@ const authed = withMcpAuth(handler, verifyMcpToken, {
 export { authed as GET, authed as POST };
 ```
 
-(That is 12 registrations covering the epic's 13 tool names — the epic counts `list_wear_logs` in both reuse and insight tables; 12 distinct tools is correct. Note this in the PR description.)
+(That is 12 registrations covering the epic's 13 tool names — the epic counts `list_fragrance_wears` in both reuse and insight tables; 12 distinct tools is correct. Note this in the PR description.)
 
 - [ ] **Step 2: Typecheck and verify the 401 discovery path (dev server running)**
 
@@ -983,7 +983,7 @@ curl -s -X POST http://localhost:3000/api/mcp \
   -H "Content-Type: application/json" \
   -H "Accept: application/json, text/event-stream" \
   -H "Authorization: Bearer $PAT" \
-  -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"get_collection_stats","arguments":{}}}'
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"get_fragrance_stats","arguments":{}}}'
 ```
 
 Expected: a result containing your real `totals`. This exercises PAT hash lookup → bridge JWT → Convex `customJwt` verification → `getUserId` → insights, i.e. the entire epic §3.1 unlock. (Requires the Convex dev deployment to reach the JWKS — apply sub-plan 5 Task 1's local strategy if verification fails with an auth error.)
@@ -994,7 +994,7 @@ Also verify a tool error surfaces as `isError` content:
 curl -s -X POST http://localhost:3000/api/mcp \
   -H "Content-Type: application/json" -H "Accept: application/json, text/event-stream" \
   -H "Authorization: Bearer $PAT" \
-  -d '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"get_bottle","arguments":{"bottleId":"garbage"}}}'
+  -d '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"get_fragrance","arguments":{"bottleId":"garbage"}}}'
 ```
 
 Expected: `isError: true` with a validator message, not a protocol failure.
@@ -1006,7 +1006,7 @@ bun run typecheck && bun run lint && bun run test:run && bun run build
 git add convex/devSeed.ts
 git commit -m "feat: add dev-only PAT seed helper for MCP smoke tests"
 git push -u origin feat/mcp-tools
-gh pr create --title "feat: MCP endpoint with insight queries and 12 tools" --body "Sub-plan 3/5 of docs/mcp-server-plan.md (issue #65): convex/insights.ts (new aggregation incl. lastWornAt — listBottleStats untouched), dual-mode bearer verifier, zod tool schemas, /api/mcp with 12 tools (epic said 13; list_wear_logs was double-counted). Scopes carried but not enforced per v1 decision (epic §10). PAT path smoke-tested end-to-end via dev seed.
+gh pr create --title "feat: MCP endpoint with insight queries and 12 tools" --body "Sub-plan 3/5 of docs/mcp-server-plan.md (issue #65): convex/insights.ts (new aggregation incl. lastWornAt — listBottleStats untouched), dual-mode bearer verifier, zod tool schemas, /api/mcp with 12 tools (epic said 13; list_fragrance_wears was double-counted). Scopes carried but not enforced per v1 decision (epic §10). PAT path smoke-tested end-to-end via dev seed.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)"
 ```

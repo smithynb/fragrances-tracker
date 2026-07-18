@@ -60,7 +60,7 @@ Why this is safe (goes verbatim into the README in Task 6): the JWKS contains on
 
 - [ ] **Step 4: Verify the local loop**
 
-Re-run sub-plan 3 Task 5's PAT smoke curl against `localhost` — `get_collection_stats` must return real data, proving dev-minted bridge JWTs verify in Convex dev.
+Re-run sub-plan 3 Task 5's PAT smoke curl against `localhost` — `get_fragrance_stats` must return real data, proving dev-minted bridge JWTs verify in Convex dev.
 
 ---
 
@@ -162,8 +162,8 @@ No files — checklist. Dev server + `bunx convex dev` running, Task 1 strategy 
 - [ ] `npx @modelcontextprotocol/inspector`, transport Streamable HTTP, URL `http://localhost:3000/api/mcp`, click Connect with auth enabled.
 - [ ] Observe the full flow: 401 → metadata discovery → DCR → browser opens `/oauth/authorize` (sign in if needed — verifies the `?redirect=` passthrough) → consent card shows "Inspector" client name + your email → Approve → inspector shows connected.
 - [ ] Tools tab lists all 12 tools with descriptions.
-- [ ] Call `get_collection_stats` → real totals. Call `add_bottle` (`{"name":"Inspector Test"}`) → returns `bottleId`; verify it appears in the web app; `delete_bottle` it.
-- [ ] Call `get_bottle` with `{"bottleId":"garbage"}` → `isError` result with a readable message, not a protocol error.
+- [ ] Call `get_fragrance_stats` → real totals. Call `add_fragrance` (`{"name":"Inspector Test"}`) → returns `bottleId`; verify it appears in the web app; `delete_fragrance` it.
+- [ ] Call `get_fragrance` with `{"bottleId":"garbage"}` → `isError` result with a readable message, not a protocol error.
 - [ ] `/settings/connections` shows the inspector grant; revoke it; inspector's next call after token expiry (≤15 min) fails; note observed behavior.
 
 ---
@@ -178,7 +178,7 @@ No files — checklist.
 claude mcp add --transport http fragrances https://<app-domain>/api/mcp
 ```
 
-In a Claude Code session run `/mcp`, complete the browser OAuth flow, then prompt: *"Using the fragrances tools, summarize my collection."* Confirm `get_collection_stats` / `get_collection_snapshot` fire and the summary is grounded in real data.
+In a Claude Code session run `/mcp`, complete the browser OAuth flow, then prompt: *"Using the fragrances tools, summarize my collection."* Confirm `get_fragrance_stats` / `get_fragrance_collection` fire and the summary is grounded in real data.
 
 - [ ] PAT mode: create a PAT in `/settings/connections`, then:
 
@@ -188,7 +188,7 @@ claude mcp add --transport http fragrances https://<app-domain>/api/mcp \
   --header "Authorization: Bearer fgt_<token>"
 ```
 
-Prompt: *"Log that I wore <bottle name> today, 3 sprays."* Confirm the wear log appears in the web app (this exercises `list_bottles` → `add_wear_log` and the per-user write rate limits).
+Prompt: *"Log that I wore <bottle name> today, 3 sprays."* Confirm the wear log appears in the web app (this exercises `list_fragrances` → `log_fragrance_wear` and the per-user write rate limits).
 
 - [ ] Revoke that PAT in settings; the next tool call returns 401 within one request (PAT lookup is per-request, but a live 5-min bridge JWT may let one in-flight call through — note actual behavior).
 

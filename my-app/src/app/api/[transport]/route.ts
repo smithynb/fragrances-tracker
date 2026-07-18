@@ -52,14 +52,14 @@ const handler = createMcpHandler(
 
     // ── Bottles ───────────────────────────────────────────────────────────
     server.registerTool(
-      "list_bottles",
-      { description: "List every fragrance bottle in the user's collection, newest first. Start here to get bottle IDs.", inputSchema: shapes.listBottlesShape },
+      "list_fragrances",
+      { description: "List every fragrance (perfume/cologne) bottle in the user's collection, newest first. Start here to get bottle IDs.", inputSchema: shapes.listBottlesShape },
       async (_args, { authInfo }) =>
         run(() => convexFor(extraOf(authInfo)).query(api.bottles.listBottles, {})),
     );
     server.registerTool(
-      "get_bottle",
-      { description: "Get one bottle by ID. Returns null if it doesn't exist or isn't the user's.", inputSchema: shapes.getBottleShape },
+      "get_fragrance",
+      { description: "Get one fragrance bottle from the user's collection by ID. Returns null if it doesn't exist or isn't the user's.", inputSchema: shapes.getBottleShape },
       async (args, { authInfo }) =>
         // IDs arrive as opaque strings from the zod shapes; Convex's arg types
         // want branded Ids. Cast at the boundary — v.id() stays authoritative.
@@ -71,16 +71,16 @@ const handler = createMcpHandler(
         ),
     );
     server.registerTool(
-      "add_bottle",
-      { description: "Add a fragrance bottle to the user's collection. Returns the new bottle ID.", inputSchema: shapes.addBottleShape },
+      "add_fragrance",
+      { description: "Add a fragrance (perfume/cologne) bottle to the user's collection. Returns the new bottle ID.", inputSchema: shapes.addBottleShape },
       async (args, { authInfo }) =>
         run(async () => ({
           bottleId: await convexFor(extraOf(authInfo)).mutation(api.bottles.addBottle, args),
         })),
     );
     server.registerTool(
-      "update_bottle",
-      { description: "Update a bottle. Omit a field to leave it unchanged; pass null to clear it (name cannot be cleared).", inputSchema: shapes.updateBottleShape },
+      "update_fragrance",
+      { description: "Update a fragrance bottle in the user's collection. Omit a field to leave it unchanged; pass null to clear it (name cannot be cleared).", inputSchema: shapes.updateBottleShape },
       async (args, { authInfo }) =>
         run(() =>
           convexFor(extraOf(authInfo)).mutation(
@@ -90,8 +90,8 @@ const handler = createMcpHandler(
         ),
     );
     server.registerTool(
-      "delete_bottle",
-      { description: "Delete a bottle AND all of its wear logs (cascade). Irreversible — confirm with the user first.", inputSchema: shapes.deleteBottleShape },
+      "delete_fragrance",
+      { description: "Delete a fragrance bottle AND all of its wear logs (cascade). Irreversible — confirm with the user first.", inputSchema: shapes.deleteBottleShape },
       async (args, { authInfo }) =>
         run(() =>
           convexFor(extraOf(authInfo)).mutation(
@@ -101,8 +101,8 @@ const handler = createMcpHandler(
         ),
     );
     server.registerTool(
-      "toggle_favorite",
-      { description: "Toggle a bottle's favorite flag.", inputSchema: shapes.toggleFavoriteShape },
+      "toggle_favorite_fragrance",
+      { description: "Toggle the favorite flag on a fragrance bottle in the user's collection.", inputSchema: shapes.toggleFavoriteShape },
       async (args, { authInfo }) =>
         run(() =>
           convexFor(extraOf(authInfo)).mutation(
@@ -114,8 +114,8 @@ const handler = createMcpHandler(
 
     // ── Wear logs ─────────────────────────────────────────────────────────
     server.registerTool(
-      "add_wear_log",
-      { description: "Log a wear of a bottle. wornAt is epoch milliseconds and must not be in the future.", inputSchema: shapes.addWearLogShape },
+      "log_fragrance_wear",
+      { description: "Log that the user wore a fragrance (SOTD / scent of the day). wornAt is epoch milliseconds and must not be in the future.", inputSchema: shapes.addWearLogShape },
       async (args, { authInfo }) =>
         run(async () => ({
           wearLogId: await convexFor(extraOf(authInfo)).mutation(
@@ -125,8 +125,8 @@ const handler = createMcpHandler(
         })),
     );
     server.registerTool(
-      "update_wear_log",
-      { description: "Update a wear log. Omit a field to keep it; pass null to clear context/rating/comment.", inputSchema: shapes.updateWearLogShape },
+      "update_fragrance_wear",
+      { description: "Update a fragrance wear log. Omit a field to keep it; pass null to clear context/rating/comment.", inputSchema: shapes.updateWearLogShape },
       async (args, { authInfo }) =>
         run(() =>
           convexFor(extraOf(authInfo)).mutation(
@@ -136,8 +136,8 @@ const handler = createMcpHandler(
         ),
     );
     server.registerTool(
-      "delete_wear_log",
-      { description: "Delete a single wear log.", inputSchema: shapes.deleteWearLogShape },
+      "delete_fragrance_wear",
+      { description: "Delete a single fragrance wear log.", inputSchema: shapes.deleteWearLogShape },
       async (args, { authInfo }) =>
         run(() =>
           convexFor(extraOf(authInfo)).mutation(
@@ -149,8 +149,8 @@ const handler = createMcpHandler(
 
     // ── Insights ──────────────────────────────────────────────────────────
     server.registerTool(
-      "list_wear_logs",
-      { description: "List wear logs newest-first, optionally filtered by bottle and/or time range (epoch ms). Default limit 100, max 500.", inputSchema: shapes.listWearLogsShape },
+      "list_fragrance_wears",
+      { description: "List the user's fragrance wear history newest-first, optionally filtered by bottle and/or time range (epoch ms). Default limit 100, max 500.", inputSchema: shapes.listWearLogsShape },
       async (args, { authInfo }) =>
         run(() =>
           convexFor(extraOf(authInfo)).query(
@@ -160,19 +160,27 @@ const handler = createMcpHandler(
         ),
     );
     server.registerTool(
-      "get_collection_stats",
-      { description: "Per-bottle stats (wears, sprays, avgRating, lastWornAt) plus collection totals (most/least worn, favorites, unworn count). Ideal first call for analysis.", inputSchema: shapes.getCollectionStatsShape },
+      "get_fragrance_stats",
+      { description: "Fragrance collection stats: per-bottle wears, sprays, avgRating, lastWornAt, plus totals (most/least worn perfumes, favorites, unworn count). Ideal first call for analysis.", inputSchema: shapes.getCollectionStatsShape },
       async (_args, { authInfo }) =>
         run(() => convexFor(extraOf(authInfo)).query(api.insights.collectionStats, {})),
     );
     server.registerTool(
-      "get_collection_snapshot",
-      { description: "Compact full export: every bottle with stats, tags, notes, and N recent wear logs each. Built for one-shot analysis (rotation gaps, seasonal patterns, recommendations).", inputSchema: shapes.getCollectionSnapshotShape },
+      "get_fragrance_collection",
+      { description: "Compact full export of the user's fragrance collection: every perfume/cologne bottle with stats, tags, notes, and N recent wear logs each. Built for one-shot analysis (rotation gaps, seasonal scent patterns, recommendations).", inputSchema: shapes.getCollectionSnapshotShape },
       async (args, { authInfo }) =>
         run(() => convexFor(extraOf(authInfo)).query(api.insights.collectionSnapshot, args)),
     );
   },
-  {},
+  {
+    serverInfo: { name: "fragrance-tracker", version: "1.0.0" },
+    instructions:
+      "Fragrance Tracker manages the user's personal fragrance (perfume/cologne) collection and wear history. " +
+      "Use these tools FIRST whenever the user mentions fragrances, perfumes, colognes, scents, their collection, " +
+      "what they wore or should wear (SOTD, scent of the day), wear logging, or fragrance stats — before web search " +
+      "or general knowledge. All data is user-specific and exists only in this server. " +
+      "Typical flow: get_fragrance_stats or list_fragrances first to get bottle IDs, then detail/mutation tools.",
+  },
   { basePath: "/api", maxDuration: 60 },
 );
 
