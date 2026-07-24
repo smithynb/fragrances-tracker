@@ -41,4 +41,63 @@ export default defineSchema({
     .index("by_user_time", ["userId", "wornAt"])
     // Efficient per-user, per-bottle listing ordered by wornAt; eliminates JS-side filter
     .index("by_user_bottle_time", ["userId", "bottleId", "wornAt"]),
+
+  // ── MCP OAuth 2.1 + PAT tables. Secret-bearing fields store SHA-256 hex
+  // hashes only; raw values are generated in Next.js and never reach Convex.
+  oauthClients: defineTable({
+    clientId: v.string(),
+    clientName: v.string(),
+    redirectUris: v.array(v.string()),
+    tokenEndpointAuthMethod: v.literal("none"),
+    createdAt: v.number(),
+  }).index("by_client_id", ["clientId"]),
+
+  oauthAuthCodes: defineTable({
+    codeHash: v.string(),
+    clientId: v.string(),
+    userId: v.id("users"),
+    redirectUri: v.string(),
+    codeChallenge: v.string(), // S256 challenge, compared as an opaque string
+    scope: v.string(),
+    resource: v.optional(v.string()),
+    expiresAt: v.number(),
+    usedAt: v.optional(v.number()),
+  }).index("by_code_hash", ["codeHash"]),
+
+  oauthGrants: defineTable({
+    userId: v.id("users"),
+    clientId: v.string(),
+    clientName: v.string(), // denormalized for the settings UI
+    scope: v.string(),
+    createdAt: v.number(),
+    lastUsedAt: v.optional(v.number()),
+    revokedAt: v.optional(v.number()),
+  })
+    .index("by_user", ["userId"])
+    .index("by_user_client", ["userId", "clientId"]),
+
+  oauthRefreshTokens: defineTable({
+    tokenHash: v.string(),
+    grantId: v.id("oauthGrants"),
+    userId: v.id("users"),
+    clientId: v.string(),
+    expiresAt: v.number(),
+    revokedAt: v.optional(v.number()),
+    replacedBy: v.optional(v.id("oauthRefreshTokens")), // rotation chain
+  })
+    .index("by_token_hash", ["tokenHash"])
+    .index("by_grant", ["grantId"]),
+
+  personalAccessTokens: defineTable({
+    userId: v.id("users"),
+    tokenHash: v.string(),
+    name: v.string(),
+    scopes: v.array(v.string()),
+    createdAt: v.number(),
+    lastUsedAt: v.optional(v.number()),
+    expiresAt: v.optional(v.number()),
+    revokedAt: v.optional(v.number()),
+  })
+    .index("by_token_hash", ["tokenHash"])
+    .index("by_user", ["userId"]),
 });

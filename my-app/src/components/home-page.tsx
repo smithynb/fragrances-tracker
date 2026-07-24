@@ -3,6 +3,7 @@
 import { useAuthActions } from "@convex-dev/auth/react";
 import { useState, useCallback, useEffect } from "react";
 import { useQuery } from "convex/react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { api } from "../../convex/_generated/api";
 import { Id, Doc } from "../../convex/_generated/dataModel";
@@ -11,6 +12,7 @@ import { BottleCollection } from "@/components/bottle-collection";
 import { BottleDetail } from "@/components/bottle-detail";
 import { AddBottleDialog } from "@/components/add-bottle-dialog";
 import { AddWearLogDialog } from "@/components/add-wear-log-dialog";
+import { McpIcon } from "@/components/icons/mcp-icon";
 import { Button } from "@/components/ui/button";
 import { useOnboarding, ONBOARDING_SETTLE_MS } from "@/lib/use-onboarding";
 import { LoaderCircle, LogOut, Wine } from "lucide-react";
@@ -114,6 +116,18 @@ export function HomePage() {
         </div>
 
         <div className="flex items-center gap-2">
+          <Button
+            asChild
+            variant="outline"
+            size="sm"
+            aria-label="Connections settings"
+            className="gap-2"
+          >
+            <Link href="/settings/connections">
+              <McpIcon className="h-4 w-4" />
+              <span className="hidden sm:inline">Connections</span>
+            </Link>
+          </Button>
           <ThemeToggle />
           <Button
             variant="outline"
