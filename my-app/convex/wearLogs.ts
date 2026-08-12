@@ -4,6 +4,7 @@ import { getOptionalUserId, getOwnedDoc, getUserId } from "./helpers";
 import { rateLimiter } from "./rateLimits";
 import { MAX_SPRAYS } from "../src/lib/constants";
 import { buildPatch } from "./patch";
+import { bottleStatsValidator, wearLogDocValidator } from "./validators";
 
 // ── Validation constants ──────────────────────────────────────────────────────
 
@@ -15,6 +16,7 @@ const FUTURE_WORN_AT_TOLERANCE_MS = 60_000;
 
 export const listBottleStats = query({
   args: {},
+  returns: v.record(v.string(), bottleStatsValidator),
   handler: async (ctx) => {
     const userId = await getOptionalUserId(ctx);
     if (userId === null) {
@@ -62,6 +64,7 @@ export const listBottleStats = query({
 
 export const listWearLogs = query({
   args: {},
+  returns: v.array(wearLogDocValidator),
   handler: async (ctx) => {
     const userId = await getOptionalUserId(ctx);
     if (userId === null) {
@@ -79,6 +82,7 @@ export const listWearLogs = query({
 
 export const listWearLogsByBottle = query({
   args: { bottleId: v.id("bottles") },
+  returns: v.array(wearLogDocValidator),
   handler: async (ctx, args) => {
     const userId = await getOptionalUserId(ctx);
     if (userId === null) {
@@ -98,6 +102,7 @@ export const listWearLogsByBottle = query({
 
 export const getWearLog = query({
   args: { wearLogId: v.id("wearLogs") },
+  returns: v.union(wearLogDocValidator, v.null()),
   handler: async (ctx, args) => {
     const userId = await getOptionalUserId(ctx);
     if (userId === null) {
@@ -165,6 +170,7 @@ export const addWearLog = mutation({
     rating: v.optional(v.number()),
     comment: v.optional(v.string()),
   },
+  returns: v.id("wearLogs"),
   handler: async (ctx, args) => {
     assertValidWornAt(args.wornAt);
     assertValidSprays(args.sprays);
@@ -202,6 +208,7 @@ export const updateWearLog = mutation({
     rating: v.optional(v.union(v.number(), v.null())),
     comment: v.optional(v.union(v.string(), v.null())),
   },
+  returns: v.null(),
   handler: async (ctx, args) => {
     // Run validation before the ownership check so the error is clear even
     // in cases where the log is not found.
@@ -226,15 +233,18 @@ export const updateWearLog = mutation({
         comment: args.comment,
       }),
     );
+    return null;
   },
 });
 
 export const deleteWearLog = mutation({
   args: { wearLogId: v.id("wearLogs") },
+  returns: v.null(),
   handler: async (ctx, args) => {
     const userId = await getUserId(ctx);
     await rateLimiter.limit(ctx, "deleteWearLog", { key: userId, throws: true });
     await getOwnedDoc(ctx, "wearLogs", args.wearLogId, userId);
     await ctx.db.delete(args.wearLogId);
+    return null;
   },
 });

@@ -3,6 +3,7 @@ import { v } from "convex/values";
 import { getOptionalUserId, getOwnedDoc, getUserId } from "./helpers";
 import { rateLimiter } from "./rateLimits";
 import { buildPatch } from "./patch";
+import { bottleDocValidator } from "./validators";
 
 // ── Validation helpers ────────────────────────────────────────────────────────
 // HTML min/max attributes are client-side only and trivially bypassed, so we
@@ -61,6 +62,7 @@ function assertValidBottleInput(args: {
 
 export const listBottles = query({
   args: {},
+  returns: v.array(bottleDocValidator),
   handler: async (ctx) => {
     const userId = await getOptionalUserId(ctx);
     if (userId === null) {
@@ -77,6 +79,7 @@ export const listBottles = query({
 
 export const getBottle = query({
   args: { bottleId: v.id("bottles") },
+  returns: v.union(bottleDocValidator, v.null()),
   handler: async (ctx, args) => {
     const userId = await getOptionalUserId(ctx);
     if (userId === null) {
@@ -99,6 +102,7 @@ export const addBottle = mutation({
     tags: v.optional(v.array(v.string())),
     comments: v.optional(v.string()),
   },
+  returns: v.id("bottles"),
   handler: async (ctx, args) => {
     assertValidBottleInput(args);
 
@@ -127,6 +131,7 @@ export const updateBottle = mutation({
     tags: v.optional(v.union(v.array(v.string()), v.null())),
     comments: v.optional(v.union(v.string(), v.null())),
   },
+  returns: v.null(),
   handler: async (ctx, args) => {
     const userId = await getUserId(ctx);
     await rateLimiter.limit(ctx, "updateBottle", { key: userId, throws: true });
@@ -144,11 +149,13 @@ export const updateBottle = mutation({
       }),
       updatedAt: Date.now(),
     });
+    return null;
   },
 });
 
 export const deleteBottle = mutation({
   args: { bottleId: v.id("bottles") },
+  returns: v.null(),
   handler: async (ctx, args) => {
     const userId = await getUserId(ctx);
     await rateLimiter.limit(ctx, "deleteBottle", { key: userId, throws: true });
@@ -164,11 +171,13 @@ export const deleteBottle = mutation({
     await Promise.all(orphanedLogs.map((log) => ctx.db.delete(log._id)));
 
     await ctx.db.delete(args.bottleId);
+    return null;
   },
 });
 
 export const toggleFavorite = mutation({
   args: { bottleId: v.id("bottles") },
+  returns: v.null(),
   handler: async (ctx, args) => {
     const userId = await getUserId(ctx);
     await rateLimiter.limit(ctx, "toggleFavorite", {
@@ -183,5 +192,6 @@ export const toggleFavorite = mutation({
     await ctx.db.patch(args.bottleId, {
       isFavorite: !(bottle.isFavorite ?? false),
     });
+    return null;
   },
 });
