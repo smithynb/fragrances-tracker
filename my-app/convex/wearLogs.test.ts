@@ -229,15 +229,22 @@ describe("cross-table integrity", () => {
     const t = setupTest();
     const user = await createTestUser(t);
     const bottleId = await addBottle(user.as);
-    await user.as.mutation(api.bottles.deleteBottle, { bottleId });
+    vi.useFakeTimers();
+    try {
+      await user.as.mutation(api.bottles.deleteBottle, { bottleId });
 
-    await expect(
-      user.as.mutation(api.wearLogs.addWearLog, {
-        bottleId,
-        wornAt: Date.now(),
-        sprays: 1,
-      }),
-    ).rejects.toThrowError("Bottle not found or access denied.");
+      await expect(
+        user.as.mutation(api.wearLogs.addWearLog, {
+          bottleId,
+          wornAt: Date.now(),
+          sprays: 1,
+        }),
+      ).rejects.toThrowError("Bottle not found or access denied.");
+
+      await t.finishAllScheduledFunctions(vi.runAllTimers);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 

@@ -10,6 +10,8 @@ export const bottleDocValidator = v.object({
   tags: v.optional(v.array(v.string())),
   comments: v.optional(v.string()),
   isFavorite: v.optional(v.boolean()),
+  deletingAt: v.optional(v.number()),
+  cleanupJobId: v.optional(v.id("_scheduled_functions")),
   createdAt: v.number(),
   updatedAt: v.optional(v.number()),
 });
