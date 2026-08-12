@@ -22,8 +22,13 @@ function assertValidBottleInput(args: {
   tags?: string[] | null;
   sizeMl?: number | null;
 }) {
-  if (args.name !== undefined && args.name.length > MAX_NAME_LENGTH) {
-    throw new Error(`Name must be at most ${MAX_NAME_LENGTH} characters.`);
+  if (args.name !== undefined) {
+    if (args.name.trim().length === 0) {
+      throw new Error("Name is required.");
+    }
+    if (args.name.length > MAX_NAME_LENGTH) {
+      throw new Error(`Name must be at most ${MAX_NAME_LENGTH} characters.`);
+    }
   }
   if (args.brand && args.brand.length > MAX_BRAND_LENGTH) {
     throw new Error(`Brand must be at most ${MAX_BRAND_LENGTH} characters.`);
@@ -39,8 +44,16 @@ function assertValidBottleInput(args: {
       throw new Error(`Each tag must be at most ${MAX_TAG_LENGTH} characters.`);
     }
   }
-  if (args.sizeMl !== undefined && args.sizeMl !== null && args.sizeMl > MAX_SIZE_ML) {
-    throw new Error(`Size must be at most ${MAX_SIZE_ML} mL.`);
+  if (args.sizeMl !== undefined && args.sizeMl !== null) {
+    if (!Number.isFinite(args.sizeMl)) {
+      throw new Error("sizeMl must be a finite number.");
+    }
+    if (args.sizeMl <= 0) {
+      throw new Error("sizeMl must be greater than 0.");
+    }
+    if (args.sizeMl > MAX_SIZE_ML) {
+      throw new Error(`Size must be at most ${MAX_SIZE_ML} mL.`);
+    }
   }
 }
 
@@ -87,9 +100,6 @@ export const addBottle = mutation({
     comments: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    if (args.sizeMl !== undefined && args.sizeMl <= 0) {
-      throw new Error("sizeMl must be greater than 0.");
-    }
     assertValidBottleInput(args);
 
     const userId = await getUserId(ctx);
@@ -122,10 +132,6 @@ export const updateBottle = mutation({
     await rateLimiter.limit(ctx, "updateBottle", { key: userId, throws: true });
     await getOwnedDoc(ctx, "bottles", args.bottleId, userId);
 
-    // Validate sizeMl when a real value (not a clear) is being set.
-    if (args.sizeMl !== undefined && args.sizeMl !== null && args.sizeMl <= 0) {
-      throw new Error("sizeMl must be greater than 0.");
-    }
     assertValidBottleInput(args);
 
     await ctx.db.patch(args.bottleId, {
