@@ -113,6 +113,9 @@ export const getWearLog = query({
 // ── Validation helpers ────────────────────────────────────────────────────────
 
 function assertValidWornAt(wornAt: number): void {
+  if (!Number.isFinite(wornAt)) {
+    throw new Error("wornAt must be a finite number.");
+  }
   if (wornAt <= 0) {
     throw new Error("wornAt must be a positive Unix timestamp (ms).");
   }
@@ -131,6 +134,9 @@ function assertValidSprays(sprays: number): void {
 }
 
 function assertValidRating(rating: number): void {
+  if (!Number.isFinite(rating)) {
+    throw new Error("rating must be a finite number.");
+  }
   if (rating < 1 || rating > 10) {
     throw new Error("rating must be between 1 and 10 inclusive.");
   }

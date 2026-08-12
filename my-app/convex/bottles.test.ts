@@ -415,6 +415,14 @@ describe("update semantics (null clears, undefined preserves)", () => {
 // ── P2: Validation boundaries ───────────────────────────────────────────────
 
 describe("validation", () => {
+  test("blank name is rejected", async () => {
+    const t = setupTest();
+    const user = await createTestUser(t);
+    await expect(user.as.mutation(api.bottles.addBottle, { name: "   " })).rejects.toThrowError(
+      "Name is required.",
+    );
+  });
+
   test("name at 200 chars is accepted", async () => {
     const t = setupTest();
     const user = await createTestUser(t);
@@ -510,6 +518,17 @@ describe("validation", () => {
     ).rejects.toThrowError("sizeMl must be greater than 0.");
   });
 
+  test("NaN sizeMl is rejected", async () => {
+    const t = setupTest();
+    const user = await createTestUser(t);
+    await expect(
+      user.as.mutation(api.bottles.addBottle, {
+        name: "Test",
+        sizeMl: Number.NaN,
+      }),
+    ).rejects.toThrowError("sizeMl must be a finite number.");
+  });
+
   test("sizeMl of 10000 is accepted", async () => {
     const t = setupTest();
     const user = await createTestUser(t);
@@ -536,6 +555,20 @@ describe("validation", () => {
 // ── P2: updateBottle validation ──────────────────────────────────────────────
 
 describe("updateBottle validation", () => {
+  test("blank name is rejected", async () => {
+    const t = setupTest();
+    const user = await createTestUser(t);
+    const bottleId = await user.as.mutation(api.bottles.addBottle, {
+      name: "Test",
+    });
+    await expect(
+      user.as.mutation(api.bottles.updateBottle, {
+        bottleId,
+        name: "   ",
+      }),
+    ).rejects.toThrowError("Name is required.");
+  });
+
   test("name at 201 chars is rejected", async () => {
     const t = setupTest();
     const user = await createTestUser(t);
@@ -586,6 +619,21 @@ describe("updateBottle validation", () => {
     await expect(
       user.as.mutation(api.bottles.updateBottle, { bottleId, sizeMl: -1 }),
     ).rejects.toThrowError("sizeMl must be greater than 0.");
+  });
+
+  test("NaN sizeMl is rejected", async () => {
+    const t = setupTest();
+    const user = await createTestUser(t);
+    const bottleId = await user.as.mutation(api.bottles.addBottle, {
+      name: "Test",
+      sizeMl: 100,
+    });
+    await expect(
+      user.as.mutation(api.bottles.updateBottle, {
+        bottleId,
+        sizeMl: Number.NaN,
+      }),
+    ).rejects.toThrowError("sizeMl must be a finite number.");
   });
 
   test("null sizeMl does not trigger the >0 validation guard", async () => {
