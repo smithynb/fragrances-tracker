@@ -1,5 +1,5 @@
-import { expect, test, describe } from "vitest";
-import { api } from "./_generated/api";
+import { expect, test, describe, vi } from "vitest";
+import { api, internal } from "./_generated/api";
 import { setupTest, createTestUser } from "./test.setup";
 
 // ── P0: Auth enforcement ────────────────────────────────────────────────────
@@ -228,81 +228,264 @@ describe("updateBottle", () => {
 });
 
 describe("deleteBottle", () => {
-  test("removes the bottle", async () => {
+  test("hides the bottle immediately", async () => {
     const t = setupTest();
     const user = await createTestUser(t);
     const bottleId = await user.as.mutation(api.bottles.addBottle, {
       name: "Doomed",
     });
 
-    await user.as.mutation(api.bottles.deleteBottle, { bottleId });
+    vi.useFakeTimers();
+    try {
+      await user.as.mutation(api.bottles.deleteBottle, { bottleId });
 
-    const bottle = await user.as.query(api.bottles.getBottle, { bottleId });
-    expect(bottle).toBeNull();
+      const bottle = await user.as.query(api.bottles.getBottle, { bottleId });
+      expect(bottle).toBeNull();
+      expect(await user.as.query(api.bottles.listBottles)).toEqual([]);
+
+      await t.finishAllScheduledFunctions(vi.runAllTimers);
+      const completedDeletion = await t.run(async (ctx) => ({
+        bottle: await ctx.db.get(bottleId),
+        failedJobs: (await ctx.db.system.query("_scheduled_functions").collect()).filter(
+          (job) => job.state.kind === "failed",
+        ),
+      }));
+      expect(completedDeletion.bottle).toBeNull();
+      expect(completedDeletion.failedJobs).toEqual([]);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 
 // ── P1: Cascade delete ──────────────────────────────────────────────────────
 
 describe("cascade delete", () => {
-  test("deleteBottle removes all associated wear logs", async () => {
+  test("cleans more than two batches without touching another bottle or its logs", async () => {
     const t = setupTest();
     const user = await createTestUser(t);
-    const bottleId = await user.as.mutation(api.bottles.addBottle, {
-      name: "Aventus",
+    const doomedBottleId = await user.as.mutation(api.bottles.addBottle, {
+      name: "Doomed",
+    });
+    const retainedBottleId = await user.as.mutation(api.bottles.addBottle, {
+      name: "Retained",
+    });
+    const now = Date.now();
+    const { firstDoomedLogId, retainedLogId } = await t.run(async (ctx) => {
+      let firstDoomedLogId = null;
+      for (let index = 0; index < 205; index += 1) {
+        const logId = await ctx.db.insert("wearLogs", {
+          userId: user.userId,
+          bottleId: doomedBottleId,
+          wornAt: now - index,
+          sprays: 1,
+        });
+        firstDoomedLogId ??= logId;
+      }
+      const retainedLogId = await ctx.db.insert("wearLogs", {
+        userId: user.userId,
+        bottleId: retainedBottleId,
+        wornAt: now,
+        sprays: 2,
+      });
+      return { firstDoomedLogId: firstDoomedLogId!, retainedLogId };
     });
 
-    await user.as.mutation(api.wearLogs.addWearLog, {
-      bottleId,
-      wornAt: Date.now(),
-      sprays: 3,
-    });
-    await user.as.mutation(api.wearLogs.addWearLog, {
-      bottleId,
-      wornAt: Date.now(),
-      sprays: 2,
-    });
+    vi.useFakeTimers();
+    try {
+      expect(
+        await user.as.mutation(api.bottles.deleteBottle, {
+          bottleId: doomedBottleId,
+        }),
+      ).toBeNull();
 
-    await user.as.mutation(api.bottles.deleteBottle, { bottleId });
+      expect(await user.as.query(api.bottles.getBottle, { bottleId: doomedBottleId })).toBeNull();
+      expect((await user.as.query(api.bottles.listBottles)).map((bottle) => bottle._id)).toEqual([
+        retainedBottleId,
+      ]);
 
-    // Verify via direct DB access
-    const remainingLogs = await t.run(async (ctx) => {
-      return await ctx.db
-        .query("wearLogs")
-        .withIndex("by_bottle", (q) => q.eq("bottleId", bottleId))
-        .collect();
-    });
-    expect(remainingLogs).toHaveLength(0);
+      const pendingCleanup = await t.run(async (ctx) => ({
+        bottle: await ctx.db.get(doomedBottleId),
+        logs: await ctx.db
+          .query("wearLogs")
+          .withIndex("by_bottle", (q) => q.eq("bottleId", doomedBottleId))
+          .collect(),
+        pendingJobs: (await ctx.db.system.query("_scheduled_functions").collect()).filter(
+          (job) => job.state.kind === "pending",
+        ).length,
+      }));
+      expect(pendingCleanup.bottle?.deletingAt).toBeTypeOf("number");
+      expect(pendingCleanup.bottle?.cleanupJobId).toBeDefined();
+      expect(pendingCleanup.logs).toHaveLength(205);
+      expect(
+        await user.as.query(api.wearLogs.listWearLogsByBottle, {
+          bottleId: doomedBottleId,
+        }),
+      ).toEqual([]);
+      expect(
+        await user.as.query(api.wearLogs.getWearLog, {
+          wearLogId: firstDoomedLogId,
+        }),
+      ).toBeNull();
+      const visibleLogs = await user.as.query(api.wearLogs.listWearLogs);
+      expect(visibleLogs).toHaveLength(1);
+      expect(visibleLogs[0]._id).toBe(retainedLogId);
+      expect(await user.as.query(api.wearLogs.listBottleStats)).toEqual({
+        [retainedBottleId]: { wears: 1, sprays: 2, avgRating: null },
+      });
+
+      await expect(
+        user.as.mutation(api.bottles.updateBottle, {
+          bottleId: doomedBottleId,
+          name: "Too late",
+        }),
+      ).rejects.toThrowError("Bottle not found or access denied.");
+      await expect(
+        user.as.mutation(api.bottles.toggleFavorite, { bottleId: doomedBottleId }),
+      ).rejects.toThrowError("Bottle not found or access denied.");
+      await expect(
+        user.as.mutation(api.wearLogs.addWearLog, {
+          bottleId: doomedBottleId,
+          wornAt: now,
+          sprays: 1,
+        }),
+      ).rejects.toThrowError("Bottle not found or access denied.");
+      await expect(
+        user.as.mutation(api.wearLogs.updateWearLog, {
+          wearLogId: firstDoomedLogId,
+          sprays: 2,
+        }),
+      ).rejects.toThrowError("Bottle not found or access denied.");
+
+      // Pending retries are true no-ops, including beyond the limiter's burst
+      // capacity, and keep pointing at the same cleanup job.
+      vi.setSystemTime(now + 1_000);
+      for (let retry = 0; retry < 5; retry += 1) {
+        expect(
+          await user.as.mutation(api.bottles.deleteBottle, {
+            bottleId: doomedBottleId,
+          }),
+        ).toBeNull();
+      }
+      const afterRetries = await t.run(async (ctx) => ({
+        bottle: await ctx.db.get(doomedBottleId),
+        pendingJobs: (await ctx.db.system.query("_scheduled_functions").collect()).filter(
+          (job) => job.state.kind === "pending",
+        ).length,
+      }));
+      expect(afterRetries.bottle?.deletingAt).toBe(pendingCleanup.bottle?.deletingAt);
+      expect(afterRetries.bottle?.cleanupJobId).toBe(pendingCleanup.bottle?.cleanupJobId);
+      expect(afterRetries.pendingJobs).toBe(pendingCleanup.pendingJobs);
+
+      // The delayed watchdog repairs terminally canceled work without another
+      // public delete call or removing the tombstone.
+      await t.run(async (ctx) => {
+        await ctx.scheduler.cancel(pendingCleanup.bottle!.cleanupJobId!);
+      });
+      vi.advanceTimersByTime(5 * 60 * 1000);
+      await t.finishInProgressScheduledFunctions();
+      const afterRepair = await t.run(async (ctx) => ctx.db.get(doomedBottleId));
+      expect(afterRepair?.cleanupJobId).toBeDefined();
+      expect(afterRepair?.cleanupJobId).not.toBe(pendingCleanup.bottle?.cleanupJobId);
+
+      await t.finishAllScheduledFunctions(vi.runAllTimers);
+
+      const completedCleanup = await t.run(async (ctx) => ({
+        bottle: await ctx.db.get(doomedBottleId),
+        doomedLogs: await ctx.db
+          .query("wearLogs")
+          .withIndex("by_bottle", (q) => q.eq("bottleId", doomedBottleId))
+          .collect(),
+        retainedBottle: await ctx.db.get(retainedBottleId),
+        retainedLog: await ctx.db.get(retainedLogId),
+        scheduledFunctions: await ctx.db.system.query("_scheduled_functions").collect(),
+      }));
+      expect(completedCleanup.bottle).toBeNull();
+      expect(completedCleanup.doomedLogs).toEqual([]);
+      expect(completedCleanup.retainedBottle?.name).toBe("Retained");
+      expect(completedCleanup.retainedLog?.bottleId).toBe(retainedBottleId);
+      expect(
+        completedCleanup.scheduledFunctions.filter((job) => job.state.kind === "failed"),
+      ).toEqual([]);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
-  test("deleteBottle does NOT remove other bottles' wear logs", async () => {
+  test("internal cleanup enforces ownership and a strict 50-log batch boundary", async () => {
     const t = setupTest();
-    const user = await createTestUser(t);
-    const bottleA = await user.as.mutation(api.bottles.addBottle, {
-      name: "Bottle A",
-    });
-    const bottleB = await user.as.mutation(api.bottles.addBottle, {
-      name: "Bottle B",
+    const owner = await createTestUser(t, "Owner");
+    const otherUser = await createTestUser(t, "Other");
+    const deletingAt = Date.now();
+    const bottleId = await t.run(async (ctx) => {
+      const id = await ctx.db.insert("bottles", {
+        userId: owner.userId,
+        name: "Boundary",
+        createdAt: deletingAt,
+        deletingAt,
+      });
+      for (let index = 0; index < 51; index += 1) {
+        await ctx.db.insert("wearLogs", {
+          userId: owner.userId,
+          bottleId: id,
+          wornAt: deletingAt - index,
+          sprays: 1,
+        });
+      }
+      return id;
     });
 
-    await user.as.mutation(api.wearLogs.addWearLog, {
-      bottleId: bottleA,
-      wornAt: Date.now(),
-      sprays: 1,
-    });
-    await user.as.mutation(api.wearLogs.addWearLog, {
-      bottleId: bottleB,
-      wornAt: Date.now(),
-      sprays: 2,
-    });
+    const args = {
+      bottleId,
+      expectedUserId: owner.userId,
+      expectedDeletingAt: deletingAt,
+    };
+    vi.useFakeTimers();
+    try {
+      expect(
+        await t.mutation(internal.bottles.deleteBottleBatch, {
+          ...args,
+          expectedUserId: otherUser.userId,
+        }),
+      ).toBeNull();
+      expect(
+        await t.run(async (ctx) =>
+          ctx.db
+            .query("wearLogs")
+            .withIndex("by_bottle", (q) => q.eq("bottleId", bottleId))
+            .collect(),
+        ),
+      ).toHaveLength(51);
 
-    await user.as.mutation(api.bottles.deleteBottle, { bottleId: bottleA });
+      expect(await t.mutation(internal.bottles.deleteBottleBatch, args)).toBeNull();
+      const afterFirstBatch = await t.run(async (ctx) => ({
+        bottle: await ctx.db.get(bottleId),
+        logs: await ctx.db
+          .query("wearLogs")
+          .withIndex("by_bottle", (q) => q.eq("bottleId", bottleId))
+          .collect(),
+      }));
+      expect(afterFirstBatch.bottle).not.toBeNull();
+      expect(afterFirstBatch.logs).toHaveLength(1);
 
-    const bottleBLogs = await user.as.query(api.wearLogs.listWearLogsByBottle, {
-      bottleId: bottleB,
-    });
-    expect(bottleBLogs).toHaveLength(1);
-    expect(bottleBLogs[0].sprays).toBe(2);
+      expect(await t.mutation(internal.bottles.deleteBottleBatch, args)).toBeNull();
+      await t.finishAllScheduledFunctions(vi.runAllTimers);
+      const afterSecondBatch = await t.run(async (ctx) => ({
+        bottle: await ctx.db.get(bottleId),
+        logs: await ctx.db
+          .query("wearLogs")
+          .withIndex("by_bottle", (q) => q.eq("bottleId", bottleId))
+          .collect(),
+        failedJobs: (await ctx.db.system.query("_scheduled_functions").collect()).filter(
+          (job) => job.state.kind === "failed",
+        ),
+      }));
+      expect(afterSecondBatch.bottle).toBeNull();
+      expect(afterSecondBatch.logs).toEqual([]);
+      expect(afterSecondBatch.failedJobs).toEqual([]);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 

@@ -17,9 +17,16 @@ export default defineSchema({
 
     isFavorite: v.optional(v.boolean()),
 
+    // A tombstone makes deletion immediate to readers while the associated
+    // wear logs are removed in bounded background batches.
+    deletingAt: v.optional(v.number()),
+    cleanupJobId: v.optional(v.id("_scheduled_functions")),
+
     createdAt: v.number(),
     updatedAt: v.optional(v.number()),
-  }).index("by_user", ["userId"]),
+  })
+    .index("by_user", ["userId"])
+    .index("by_user_and_deleting_at", ["userId", "deletingAt"]),
 
   wearLogs: defineTable({
     userId: v.id("users"),

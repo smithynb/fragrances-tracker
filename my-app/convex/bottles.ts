@@ -1,6 +1,7 @@
-import { mutation, query } from "./_generated/server";
+import { internal } from "./_generated/api";
+import { internalMutation, mutation, query } from "./_generated/server";
 import { v } from "convex/values";
-import { getOptionalUserId, getOwnedDoc, getUserId } from "./helpers";
+import { getActiveOwnedBottle, getOptionalUserId, getOwnedDoc, getUserId } from "./helpers";
 import { rateLimiter } from "./rateLimits";
 import { buildPatch } from "./patch";
 import { bottleDocValidator } from "./validators";
@@ -15,6 +16,8 @@ const MAX_COMMENTS_LENGTH = 2000;
 const MAX_TAG_LENGTH = 50;
 const MAX_TAGS_COUNT = 20;
 const MAX_SIZE_ML = 10_000; // 10 litres ought to be enough for anybody
+const BOTTLE_DELETE_BATCH_SIZE = 50;
+const BOTTLE_DELETE_WATCHDOG_DELAY_MS = 5 * 60 * 1000;
 
 function assertValidBottleInput(args: {
   name?: string;
@@ -71,7 +74,9 @@ export const listBottles = query({
 
     return await ctx.db
       .query("bottles")
-      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .withIndex("by_user_and_deleting_at", (q) =>
+        q.eq("userId", userId).eq("deletingAt", undefined),
+      )
       .order("desc")
       .collect();
   },
@@ -87,7 +92,7 @@ export const getBottle = query({
     }
 
     const bottle = await ctx.db.get(args.bottleId);
-    if (!bottle || bottle.userId !== userId) return null;
+    if (!bottle || bottle.userId !== userId || bottle.deletingAt !== undefined) return null;
     return bottle;
   },
 });
@@ -135,7 +140,7 @@ export const updateBottle = mutation({
   handler: async (ctx, args) => {
     const userId = await getUserId(ctx);
     await rateLimiter.limit(ctx, "updateBottle", { key: userId, throws: true });
-    await getOwnedDoc(ctx, "bottles", args.bottleId, userId);
+    await getActiveOwnedBottle(ctx, args.bottleId, userId);
 
     assertValidBottleInput(args);
 
@@ -158,19 +163,129 @@ export const deleteBottle = mutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     const userId = await getUserId(ctx);
-    await rateLimiter.limit(ctx, "deleteBottle", { key: userId, throws: true });
-    await getOwnedDoc(ctx, "bottles", args.bottleId, userId);
+    const bottle = await getOwnedDoc(ctx, "bottles", args.bottleId, userId);
+    if (bottle.deletingAt !== undefined) {
+      const cleanupJob = bottle.cleanupJobId
+        ? await ctx.db.system.get("_scheduled_functions", bottle.cleanupJobId)
+        : null;
+      if (cleanupJob?.state.kind === "pending" || cleanupJob?.state.kind === "inProgress") {
+        return null;
+      }
 
-    // Cascade-delete all wear logs that reference this bottle so no orphaned
-    // records are left behind after the bottle document is removed.
-    const orphanedLogs = await ctx.db
+      // A failed, canceled, completed-but-stale, or expired job record can be
+      // repaired by a later delete request without changing the tombstone.
+      await rateLimiter.limit(ctx, "deleteBottle", { key: userId, throws: true });
+      const cleanupJobId = await ctx.scheduler.runAfter(0, internal.bottles.deleteBottleBatch, {
+        bottleId: args.bottleId,
+        expectedUserId: userId,
+        expectedDeletingAt: bottle.deletingAt,
+      });
+      await ctx.db.patch(args.bottleId, { cleanupJobId });
+      return null;
+    }
+
+    await rateLimiter.limit(ctx, "deleteBottle", { key: userId, throws: true });
+    const deletingAt = Date.now();
+    const cleanupJobId = await ctx.scheduler.runAfter(0, internal.bottles.deleteBottleBatch, {
+      bottleId: args.bottleId,
+      expectedUserId: userId,
+      expectedDeletingAt: deletingAt,
+    });
+    await ctx.scheduler.runAfter(
+      BOTTLE_DELETE_WATCHDOG_DELAY_MS,
+      internal.bottles.watchBottleDeletion,
+      {
+        bottleId: args.bottleId,
+        expectedUserId: userId,
+        expectedDeletingAt: deletingAt,
+      },
+    );
+    await ctx.db.patch(args.bottleId, { deletingAt, cleanupJobId });
+    return null;
+  },
+});
+
+/**
+ * Removes one bounded batch of a bottle's children, then schedules the next
+ * batch. The expected owner and tombstone make stale or misrouted jobs no-op;
+ * the parent is only removed after no children remain.
+ */
+export const deleteBottleBatch = internalMutation({
+  args: {
+    bottleId: v.id("bottles"),
+    expectedUserId: v.id("users"),
+    expectedDeletingAt: v.number(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args): Promise<null> => {
+    const bottle = await ctx.db.get(args.bottleId);
+    if (
+      !bottle ||
+      bottle.userId !== args.expectedUserId ||
+      bottle.deletingAt !== args.expectedDeletingAt
+    ) {
+      return null;
+    }
+
+    const logs = await ctx.db
       .query("wearLogs")
       .withIndex("by_bottle", (q) => q.eq("bottleId", args.bottleId))
-      .collect();
+      .take(BOTTLE_DELETE_BATCH_SIZE);
+    await Promise.all(logs.map((log) => ctx.db.delete(log._id)));
 
-    await Promise.all(orphanedLogs.map((log) => ctx.db.delete(log._id)));
+    if (logs.length === BOTTLE_DELETE_BATCH_SIZE) {
+      const cleanupJobId = await ctx.scheduler.runAfter(
+        0,
+        internal.bottles.deleteBottleBatch,
+        args,
+      );
+      await ctx.db.patch(args.bottleId, { cleanupJobId });
+    } else {
+      await ctx.db.delete(args.bottleId);
+    }
+    return null;
+  },
+});
 
-    await ctx.db.delete(args.bottleId);
+/**
+ * Maintains one delayed recovery chain for each tombstone. Active cleanup is
+ * left alone; terminal or missing work is replaced. Once the parent is gone or
+ * the nonce no longer matches, the chain stops without touching data.
+ */
+export const watchBottleDeletion = internalMutation({
+  args: {
+    bottleId: v.id("bottles"),
+    expectedUserId: v.id("users"),
+    expectedDeletingAt: v.number(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args): Promise<null> => {
+    const bottle = await ctx.db.get(args.bottleId);
+    if (
+      !bottle ||
+      bottle.userId !== args.expectedUserId ||
+      bottle.deletingAt !== args.expectedDeletingAt
+    ) {
+      return null;
+    }
+
+    const cleanupJob = bottle.cleanupJobId
+      ? await ctx.db.system.get("_scheduled_functions", bottle.cleanupJobId)
+      : null;
+    if (cleanupJob?.state.kind !== "pending" && cleanupJob?.state.kind !== "inProgress") {
+      const cleanupJobId = await ctx.scheduler.runAfter(
+        0,
+        internal.bottles.deleteBottleBatch,
+        args,
+      );
+      await ctx.db.patch(args.bottleId, { cleanupJobId });
+    }
+
+    await ctx.scheduler.runAfter(
+      BOTTLE_DELETE_WATCHDOG_DELAY_MS,
+      internal.bottles.watchBottleDeletion,
+      args,
+    );
     return null;
   },
 });
@@ -185,7 +300,7 @@ export const toggleFavorite = mutation({
       throws: true,
     });
 
-    const bottle = await getOwnedDoc(ctx, "bottles", args.bottleId, userId);
+    const bottle = await getActiveOwnedBottle(ctx, args.bottleId, userId);
 
     // Intentionally do NOT touch updatedAt — favoriting is metadata, not a
     // content edit. Keeps any future "last modified" view honest.
