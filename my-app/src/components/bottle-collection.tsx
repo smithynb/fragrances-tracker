@@ -4,6 +4,7 @@ import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { Id } from "../../convex/_generated/dataModel";
 import { BottleCard } from "@/components/bottle-card";
+import { FailedBottleDeletions } from "@/components/failed-bottle-deletions";
 import { CoachMark } from "@/components/coach-mark";
 import { FavoriteToggle } from "@/components/favorite-toggle";
 import { cn } from "@/lib/utils";
@@ -144,33 +145,36 @@ export function BottleCollection({
   if (bottles.length === 0) {
     const isWelcome = onboardingStep === "welcome";
     return (
-      <div className="flex h-full flex-col items-center justify-center py-16 animate-fade-up">
-        <div className="w-16 h-16 rounded-2xl bg-surface-alt flex items-center justify-center mb-4">
-          <Wine className="h-8 w-8 text-text-secondary/50" />
-        </div>
-        <h3 className="font-display text-xl font-semibold text-text mb-1">
-          {isWelcome ? "Welcome! Let\u2019s get started" : "Your collection awaits"}
-        </h3>
-        <p className="text-sm text-text-secondary text-center max-w-[240px] mb-6">
-          {isWelcome
-            ? "Add your first fragrance to begin your tracking journey."
-            : "Add your first fragrance to start tracking your collection and wear history."}
-        </p>
-        <div className={cn("relative", isWelcome && "z-50")}>
-          <Button onClick={onAddBottle} className={cn("gap-2", isWelcome && "coach-pulse")}>
-            <Plus className="h-4 w-4" />
-            Add Fragrance
-          </Button>
-          {isWelcome && onDismissOnboarding && (
-            <CoachMark
-              step={1}
-              totalSteps={3}
-              title="Add your first fragrance"
-              description="Start by adding a fragrance from your collection."
-              onDismiss={onDismissOnboarding}
-              position="bottom"
-            />
-          )}
+      <div className="flex h-full flex-col">
+        <FailedBottleDeletions />
+        <div className="flex flex-1 flex-col items-center justify-center py-16 animate-fade-up">
+          <div className="w-16 h-16 rounded-2xl bg-surface-alt flex items-center justify-center mb-4">
+            <Wine className="h-8 w-8 text-text-secondary/50" />
+          </div>
+          <h3 className="font-display text-xl font-semibold text-text mb-1">
+            {isWelcome ? "Welcome! Let\u2019s get started" : "Your collection awaits"}
+          </h3>
+          <p className="text-sm text-text-secondary text-center max-w-[240px] mb-6">
+            {isWelcome
+              ? "Add your first fragrance to begin your tracking journey."
+              : "Add your first fragrance to start tracking your collection and wear history."}
+          </p>
+          <div className={cn("relative", isWelcome && "z-50")}>
+            <Button onClick={onAddBottle} className={cn("gap-2", isWelcome && "coach-pulse")}>
+              <Plus className="h-4 w-4" />
+              Add Fragrance
+            </Button>
+            {isWelcome && onDismissOnboarding && (
+              <CoachMark
+                step={1}
+                totalSteps={3}
+                title="Add your first fragrance"
+                description="Start by adding a fragrance from your collection."
+                onDismiss={onDismissOnboarding}
+                position="bottom"
+              />
+            )}
+          </div>
         </div>
       </div>
     );
@@ -178,6 +182,7 @@ export function BottleCollection({
 
   return (
     <div className="flex h-full flex-col">
+      <FailedBottleDeletions />
       {/* Search + Add */}
       <div className="flex items-center gap-4 pt-5 pb-0 animate-fade-up stagger-1">
         <div className="min-w-0 flex-1">

@@ -41,3 +41,20 @@ export async function getOwnedDoc<T extends OwnedTable>(
   }
   return doc as unknown as Doc<T>;
 }
+
+/**
+ * Fetches an owned bottle that is still active. Tombstoned bottles use the
+ * same ownership-safe error as missing and foreign bottles so background
+ * deletion state never expands the public information surface.
+ */
+export async function getActiveOwnedBottle(
+  ctx: QueryCtx | MutationCtx,
+  bottleId: Id<"bottles">,
+  userId: Id<"users">,
+): Promise<Doc<"bottles">> {
+  const bottle = await getOwnedDoc(ctx, "bottles", bottleId, userId);
+  if (bottle.deletingAt !== undefined) {
+    throw new Error("Bottle not found or access denied.");
+  }
+  return bottle;
+}

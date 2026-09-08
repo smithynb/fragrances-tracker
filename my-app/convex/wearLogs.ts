@@ -1,9 +1,10 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
-import { getOptionalUserId, getOwnedDoc, getUserId } from "./helpers";
+import { getActiveOwnedBottle, getOptionalUserId, getOwnedDoc, getUserId } from "./helpers";
 import { rateLimiter } from "./rateLimits";
 import { MAX_SPRAYS } from "../src/lib/constants";
 import { buildPatch } from "./patch";
+import { bottleStatsValidator, wearLogDocValidator } from "./validators";
 
 // ── Validation constants ──────────────────────────────────────────────────────
 
@@ -15,16 +16,24 @@ const FUTURE_WORN_AT_TOLERANCE_MS = 60_000;
 
 export const listBottleStats = query({
   args: {},
+  returns: v.record(v.string(), bottleStatsValidator),
   handler: async (ctx) => {
     const userId = await getOptionalUserId(ctx);
     if (userId === null) {
       return {};
     }
 
-    const logs = await ctx.db
-      .query("wearLogs")
-      .withIndex("by_user", (q) => q.eq("userId", userId))
-      .collect();
+    const [logs, deletingBottles] = await Promise.all([
+      ctx.db
+        .query("wearLogs")
+        .withIndex("by_user", (q) => q.eq("userId", userId))
+        .collect(),
+      ctx.db
+        .query("bottles")
+        .withIndex("by_user_and_deleting_at", (q) => q.eq("userId", userId).gt("deletingAt", 0))
+        .collect(),
+    ]);
+    const deletingBottleIds = new Set(deletingBottles.map((bottle) => bottle._id));
     // Aggregate wear count, spray totals, and average rating per bottle
     // server-side so the collection view never needs to download the full
     // wear-log history.
@@ -33,6 +42,7 @@ export const listBottleStats = query({
       { wears: number; sprays: number; ratingSum: number; ratingCount: number }
     >();
     for (const log of logs) {
+      if (deletingBottleIds.has(log.bottleId)) continue;
       const existing = stats.get(log.bottleId) ?? {
         wears: 0,
         sprays: 0,
@@ -62,26 +72,40 @@ export const listBottleStats = query({
 
 export const listWearLogs = query({
   args: {},
+  returns: v.array(wearLogDocValidator),
   handler: async (ctx) => {
     const userId = await getOptionalUserId(ctx);
     if (userId === null) {
       return [];
     }
 
-    // Uses the by_user_time index so results arrive sorted by wornAt.
-    return await ctx.db
-      .query("wearLogs")
-      .withIndex("by_user_time", (q) => q.eq("userId", userId))
-      .order("desc")
-      .collect();
+    const [logs, deletingBottles] = await Promise.all([
+      ctx.db
+        .query("wearLogs")
+        .withIndex("by_user_time", (q) => q.eq("userId", userId))
+        .order("desc")
+        .collect(),
+      ctx.db
+        .query("bottles")
+        .withIndex("by_user_and_deleting_at", (q) => q.eq("userId", userId).gt("deletingAt", 0))
+        .collect(),
+    ]);
+    const deletingBottleIds = new Set(deletingBottles.map((bottle) => bottle._id));
+    return logs.filter((log) => !deletingBottleIds.has(log.bottleId));
   },
 });
 
 export const listWearLogsByBottle = query({
   args: { bottleId: v.id("bottles") },
+  returns: v.array(wearLogDocValidator),
   handler: async (ctx, args) => {
     const userId = await getOptionalUserId(ctx);
     if (userId === null) {
+      return [];
+    }
+
+    const bottle = await ctx.db.get(args.bottleId);
+    if (!bottle || bottle.userId !== userId || bottle.deletingAt !== undefined) {
       return [];
     }
 
@@ -98,6 +122,7 @@ export const listWearLogsByBottle = query({
 
 export const getWearLog = query({
   args: { wearLogId: v.id("wearLogs") },
+  returns: v.union(wearLogDocValidator, v.null()),
   handler: async (ctx, args) => {
     const userId = await getOptionalUserId(ctx);
     if (userId === null) {
@@ -106,6 +131,8 @@ export const getWearLog = query({
 
     const log = await ctx.db.get(args.wearLogId);
     if (!log || log.userId !== userId) return null;
+    const bottle = await ctx.db.get(log.bottleId);
+    if (!bottle || bottle.userId !== userId || bottle.deletingAt !== undefined) return null;
     return log;
   },
 });
@@ -113,6 +140,9 @@ export const getWearLog = query({
 // ── Validation helpers ────────────────────────────────────────────────────────
 
 function assertValidWornAt(wornAt: number): void {
+  if (!Number.isFinite(wornAt)) {
+    throw new Error("wornAt must be a finite number.");
+  }
   if (wornAt <= 0) {
     throw new Error("wornAt must be a positive Unix timestamp (ms).");
   }
@@ -131,6 +161,9 @@ function assertValidSprays(sprays: number): void {
 }
 
 function assertValidRating(rating: number): void {
+  if (!Number.isFinite(rating)) {
+    throw new Error("rating must be a finite number.");
+  }
   if (rating < 1 || rating > 10) {
     throw new Error("rating must be between 1 and 10 inclusive.");
   }
@@ -159,6 +192,7 @@ export const addWearLog = mutation({
     rating: v.optional(v.number()),
     comment: v.optional(v.string()),
   },
+  returns: v.id("wearLogs"),
   handler: async (ctx, args) => {
     assertValidWornAt(args.wornAt);
     assertValidSprays(args.sprays);
@@ -167,8 +201,8 @@ export const addWearLog = mutation({
     const userId = await getUserId(ctx);
     await rateLimiter.limit(ctx, "addWearLog", { key: userId, throws: true });
 
-    // Verify the bottle belongs to this user.
-    await getOwnedDoc(ctx, "bottles", args.bottleId, userId);
+    // Verify the bottle belongs to this user and is not being deleted.
+    await getActiveOwnedBottle(ctx, args.bottleId, userId);
 
     // Validate string lengths server-side (HTML max is client-only).
     assertValidWearLogStrings(args);
@@ -196,6 +230,7 @@ export const updateWearLog = mutation({
     rating: v.optional(v.union(v.number(), v.null())),
     comment: v.optional(v.union(v.string(), v.null())),
   },
+  returns: v.null(),
   handler: async (ctx, args) => {
     // Run validation before the ownership check so the error is clear even
     // in cases where the log is not found.
@@ -205,7 +240,12 @@ export const updateWearLog = mutation({
 
     const userId = await getUserId(ctx);
     await rateLimiter.limit(ctx, "updateWearLog", { key: userId, throws: true });
-    await getOwnedDoc(ctx, "wearLogs", args.wearLogId, userId);
+    const log = await getOwnedDoc(ctx, "wearLogs", args.wearLogId, userId);
+
+    // Updates to a child that is already scheduled for deletion are rejected:
+    // the change would never become durable user-visible state. Deletes remain
+    // allowed and safely reduce the cleanup worker's remaining batch.
+    await getActiveOwnedBottle(ctx, log.bottleId, userId);
 
     // Validate string lengths server-side.
     assertValidWearLogStrings(args);
@@ -220,15 +260,18 @@ export const updateWearLog = mutation({
         comment: args.comment,
       }),
     );
+    return null;
   },
 });
 
 export const deleteWearLog = mutation({
   args: { wearLogId: v.id("wearLogs") },
+  returns: v.null(),
   handler: async (ctx, args) => {
     const userId = await getUserId(ctx);
     await rateLimiter.limit(ctx, "deleteWearLog", { key: userId, throws: true });
     await getOwnedDoc(ctx, "wearLogs", args.wearLogId, userId);
     await ctx.db.delete(args.wearLogId);
+    return null;
   },
 });

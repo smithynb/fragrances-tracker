@@ -229,15 +229,22 @@ describe("cross-table integrity", () => {
     const t = setupTest();
     const user = await createTestUser(t);
     const bottleId = await addBottle(user.as);
-    await user.as.mutation(api.bottles.deleteBottle, { bottleId });
+    vi.useFakeTimers();
+    try {
+      await user.as.mutation(api.bottles.deleteBottle, { bottleId });
 
-    await expect(
-      user.as.mutation(api.wearLogs.addWearLog, {
-        bottleId,
-        wornAt: Date.now(),
-        sprays: 1,
-      }),
-    ).rejects.toThrowError("Bottle not found or access denied.");
+      await expect(
+        user.as.mutation(api.wearLogs.addWearLog, {
+          bottleId,
+          wornAt: Date.now(),
+          sprays: 1,
+        }),
+      ).rejects.toThrowError("Bottle not found or access denied.");
+
+      await t.finishAllScheduledFunctions(vi.runAllTimers);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 
@@ -599,6 +606,33 @@ describe("update semantics (null clears, undefined preserves)", () => {
 // ── P2: Validation boundaries ───────────────────────────────────────────────
 
 describe("validation", () => {
+  test("NaN wornAt is rejected", async () => {
+    const t = setupTest();
+    const user = await createTestUser(t);
+    const bottleId = await addBottle(user.as);
+    await expect(
+      user.as.mutation(api.wearLogs.addWearLog, {
+        bottleId,
+        wornAt: Number.NaN,
+        sprays: 1,
+      }),
+    ).rejects.toThrowError("wornAt must be a finite number.");
+  });
+
+  test("NaN rating is rejected", async () => {
+    const t = setupTest();
+    const user = await createTestUser(t);
+    const bottleId = await addBottle(user.as);
+    await expect(
+      user.as.mutation(api.wearLogs.addWearLog, {
+        bottleId,
+        wornAt: Date.now(),
+        sprays: 1,
+        rating: Number.NaN,
+      }),
+    ).rejects.toThrowError("rating must be a finite number.");
+  });
+
   test("sprays of 0 is rejected", async () => {
     const t = setupTest();
     const user = await createTestUser(t);
@@ -827,6 +861,40 @@ describe("validation", () => {
 // ── P2: updateWearLog validation ─────────────────────────────────────────────
 
 describe("updateWearLog validation", () => {
+  test("NaN wornAt is rejected", async () => {
+    const t = setupTest();
+    const user = await createTestUser(t);
+    const bottleId = await addBottle(user.as);
+    const logId = await user.as.mutation(api.wearLogs.addWearLog, {
+      bottleId,
+      wornAt: Date.now(),
+      sprays: 1,
+    });
+    await expect(
+      user.as.mutation(api.wearLogs.updateWearLog, {
+        wearLogId: logId,
+        wornAt: Number.NaN,
+      }),
+    ).rejects.toThrowError("wornAt must be a finite number.");
+  });
+
+  test("NaN rating is rejected", async () => {
+    const t = setupTest();
+    const user = await createTestUser(t);
+    const bottleId = await addBottle(user.as);
+    const logId = await user.as.mutation(api.wearLogs.addWearLog, {
+      bottleId,
+      wornAt: Date.now(),
+      sprays: 1,
+    });
+    await expect(
+      user.as.mutation(api.wearLogs.updateWearLog, {
+        wearLogId: logId,
+        rating: Number.NaN,
+      }),
+    ).rejects.toThrowError("rating must be a finite number.");
+  });
+
   test("sprays of 0 is rejected", async () => {
     const t = setupTest();
     const user = await createTestUser(t);
