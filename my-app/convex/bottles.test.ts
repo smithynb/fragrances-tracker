@@ -256,11 +256,174 @@ describe("deleteBottle", () => {
       vi.useRealTimers();
     }
   });
+
+  test("lets the owner find a failed tombstone and request the existing retry", async () => {
+    const t = setupTest();
+    const owner = await createTestUser(t, "Recovery owner");
+    const otherUser = await createTestUser(t, "Other owner");
+    const previousDeletingAt = 100;
+    const bottleId = await t.run(async (ctx) =>
+      ctx.db.insert("bottles", {
+        userId: owner.userId,
+        name: "Recoverable bottle",
+        brand: "Private brand detail",
+        comments: "Private comment detail",
+        deletingAt: previousDeletingAt,
+        cleanupStatus: "failed",
+        cleanupAttempts: 4,
+        cleanupLastError: "private operator detail",
+        createdAt: previousDeletingAt,
+      }),
+    );
+
+    const failures = await owner.as.query(api.bottles.listFailedBottleDeletions);
+    expect(failures).toEqual([
+      {
+        _id: bottleId,
+        name: "Recoverable bottle",
+        cleanupStatus: "failed",
+      },
+    ]);
+    expect(Object.keys(failures[0]).sort()).toEqual(["_id", "name", "cleanupStatus"].sort());
+    expect(await otherUser.as.query(api.bottles.listFailedBottleDeletions)).toEqual([]);
+    expect(await t.query(api.bottles.listFailedBottleDeletions)).toEqual([]);
+
+    await owner.as.mutation(api.bottles.deleteBottle, { bottleId });
+    const retried = await t.run(async (ctx) => ctx.db.get(bottleId));
+    expect(retried?.deletingAt).toBeGreaterThan(previousDeletingAt);
+    expect(retried?.cleanupStatus).toBe("pending");
+    expect(retried?.cleanupAttempts).toBe(1);
+    expect(retried?.cleanupJobId).toBeDefined();
+
+    await t.run(async (ctx) => {
+      await ctx.scheduler.cancel(retried!.cleanupJobId!);
+    });
+  });
 });
 
 // ── P1: Cascade delete ──────────────────────────────────────────────────────
 
 describe("cascade delete", () => {
+  test("keeps recovery coverage after observing an in-progress batch", async () => {
+    const t = setupTest();
+    const user = await createTestUser(t, "Successor owner");
+    const bottleId = await user.as.mutation(api.bottles.addBottle, {
+      name: "Successor failure",
+    });
+    const now = Date.now();
+    await t.run(async (ctx) => {
+      for (let index = 0; index < 51; index += 1) {
+        await ctx.db.insert("wearLogs", {
+          userId: user.userId,
+          bottleId,
+          wornAt: now - index,
+          sprays: 1,
+        });
+      }
+    });
+
+    vi.useFakeTimers();
+    try {
+      await user.as.mutation(api.bottles.deleteBottle, { bottleId });
+
+      const beforeFirstBatch = await t.run(async (ctx) => ({
+        bottle: await ctx.db.get(bottleId),
+        jobs: await ctx.db.system.query("_scheduled_functions").collect(),
+      }));
+      const initialBatch = beforeFirstBatch.jobs.find(
+        (job) => job._id === beforeFirstBatch.bottle?.cleanupJobId,
+      );
+      const initialWatchdog = beforeFirstBatch.jobs.find((job) =>
+        job.name.endsWith("watchBottleDeletion"),
+      );
+      const initialWatchdogId = initialWatchdog?._id;
+      const deletionNonce = beforeFirstBatch.bottle!.deletingAt!;
+      expect(initialBatch?.state.kind).toBe("pending");
+      expect(initialWatchdogId).toBeDefined();
+
+      // Start the real scheduled batch and assert that the harness observed
+      // its actual in-progress scheduler state before it committed.
+      vi.advanceTimersToNextTimer();
+      const duringFirstBatch = await t.run(async (ctx) => ({
+        bottle: await ctx.db.get(bottleId),
+        jobs: await ctx.db.system.query("_scheduled_functions").collect(),
+      }));
+      expect(duringFirstBatch.jobs.find((job) => job._id === initialBatch?._id)?.state.kind).toBe(
+        "inProgress",
+      );
+      await t.finishInProgressScheduledFunctions();
+
+      const afterFirstBatch = await t.run(async (ctx) => ({
+        bottle: await ctx.db.get(bottleId),
+        jobs: await ctx.db.system.query("_scheduled_functions").collect(),
+      }));
+      const successorBatch = afterFirstBatch.jobs.find(
+        (job) => job._id === afterFirstBatch.bottle?.cleanupJobId,
+      );
+      const successorWatchdog = afterFirstBatch.jobs.find(
+        (job) =>
+          job.name.endsWith("watchBottleDeletion") &&
+          job._id !== initialWatchdogId &&
+          job.state.kind === "pending",
+      );
+      expect(successorBatch?.state.kind).toBe("pending");
+      expect(successorWatchdog).toBeDefined();
+
+      // Model the race where the watchdog saw active work before the batch
+      // could commit its successor. Remove the old observations and make the
+      // deadline due; the watchdog under test must leave a new bounded one.
+      await t.run(async (ctx) => {
+        await ctx.scheduler.cancel(initialWatchdogId!);
+        await ctx.scheduler.cancel(successorWatchdog!._id);
+        await ctx.db.patch(bottleId, { cleanupNextRetryAt: undefined });
+      });
+      await t.mutation(internal.bottles.watchBottleDeletion, {
+        bottleId,
+        expectedUserId: user.userId,
+        expectedDeletingAt: deletionNonce,
+      });
+      // A duplicate observation while the claimed deadline is still future
+      // must not add another watchdog.
+      await t.mutation(internal.bottles.watchBottleDeletion, {
+        bottleId,
+        expectedUserId: user.userId,
+        expectedDeletingAt: deletionNonce,
+      });
+      const afterActiveObservation = await t.run(async (ctx) => ({
+        bottle: await ctx.db.get(bottleId),
+        jobs: await ctx.db.system.query("_scheduled_functions").collect(),
+      }));
+      expect(afterActiveObservation.bottle?.deletingAt).toBe(deletionNonce);
+      expect(afterActiveObservation.bottle?.cleanupJobId).toBe(successorBatch?._id);
+      expect(afterActiveObservation.bottle?.cleanupNextRetryAt).toBeTypeOf("number");
+      expect(
+        afterActiveObservation.jobs.filter(
+          (job) => job.name.endsWith("watchBottleDeletion") && job.state.kind === "pending",
+        ),
+      ).toHaveLength(1);
+
+      // The successor batch now fails/cancels. No later watchdog is invoked by
+      // hand; the future observation created above must recover automatically.
+      await t.run(async (ctx) => {
+        await ctx.scheduler.cancel(successorBatch!._id);
+      });
+      vi.advanceTimersByTime(5 * 60 * 1000);
+      await t.finishInProgressScheduledFunctions();
+      await t.finishAllScheduledFunctions(vi.runAllTimers);
+      expect(await t.run(async (ctx) => ctx.db.get(bottleId))).toBeNull();
+      expect(
+        await t.run(async (ctx) =>
+          ctx.db
+            .query("wearLogs")
+            .withIndex("by_bottle", (q) => q.eq("bottleId", bottleId))
+            .collect(),
+        ),
+      ).toEqual([]);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   test("cleans more than two batches without touching another bottle or its logs", async () => {
     const t = setupTest();
     const user = await createTestUser(t);
@@ -483,6 +646,90 @@ describe("cascade delete", () => {
       expect(afterSecondBatch.bottle).toBeNull();
       expect(afterSecondBatch.logs).toEqual([]);
       expect(afterSecondBatch.failedJobs).toEqual([]);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  test("caps persistent watchdog failures and recovers on an owner retry", async () => {
+    const t = setupTest();
+    const user = await createTestUser(t, "Cleanup owner");
+    const bottleId = await user.as.mutation(api.bottles.addBottle, {
+      name: "Persistent failure",
+    });
+
+    vi.useFakeTimers();
+    try {
+      const now = Date.now();
+      await user.as.mutation(api.bottles.deleteBottle, { bottleId });
+
+      let current = await t.run(async (ctx) => ctx.db.get(bottleId));
+      const deletionNonce = current!.deletingAt!;
+      expect(current?.cleanupStatus).toBe("pending");
+      expect(current?.cleanupAttempts).toBe(1);
+      expect(current?.cleanupNextRetryAt).toBe(now + 5 * 60 * 1000);
+
+      const nextWatchdogDelays = [15, 30, 60].map((minutes) => minutes * 60 * 1000);
+      for (let failedAttempt = 1; failedAttempt <= 4; failedAttempt += 1) {
+        const cleanupJobId = current!.cleanupJobId!;
+        await t.run(async (ctx) => {
+          await ctx.scheduler.cancel(cleanupJobId);
+        });
+
+        await t.mutation(internal.bottles.watchBottleDeletion, {
+          bottleId,
+          expectedUserId: user.userId,
+          expectedDeletingAt: deletionNonce,
+        });
+        current = await t.run(async (ctx) => ctx.db.get(bottleId));
+
+        if (failedAttempt < 4) {
+          expect(current?.cleanupStatus).toBe("pending");
+          expect(current?.cleanupAttempts).toBe(failedAttempt + 1);
+          expect(current?.deletingAt).toBe(deletionNonce);
+          expect(current?.cleanupNextRetryAt).toBe(now + nextWatchdogDelays[failedAttempt - 1]);
+        } else {
+          expect(current?.cleanupStatus).toBe("failed");
+          expect(current?.cleanupAttempts).toBe(4);
+          expect(current?.cleanupNextRetryAt).toBeUndefined();
+          expect(current?.cleanupLastError).toContain("retry limit");
+        }
+      }
+
+      const failedCleanupJobId = current!.cleanupJobId;
+      await t.mutation(internal.bottles.watchBottleDeletion, {
+        bottleId,
+        expectedUserId: user.userId,
+        expectedDeletingAt: deletionNonce,
+      });
+      const capped = await t.run(async (ctx) => ctx.db.get(bottleId));
+      expect(capped?.cleanupJobId).toBe(failedCleanupJobId);
+      expect(capped?.cleanupAttempts).toBe(4);
+
+      // All watchdogs already queued for this nonce are finite and become
+      // no-ops after the failed state is recorded.
+      await t.finishAllScheduledFunctions(vi.runAllTimers);
+
+      await user.as.mutation(api.bottles.deleteBottle, { bottleId });
+      const retried = await t.run(async (ctx) => ctx.db.get(bottleId));
+      expect(retried?.cleanupStatus).toBe("pending");
+      expect(retried?.cleanupAttempts).toBe(1);
+      expect(retried?.deletingAt).toBeGreaterThan(deletionNonce);
+      expect(retried?.cleanupJobId).not.toBe(failedCleanupJobId);
+
+      // A delayed job from the exhausted generation cannot replace the new
+      // attempt because its deletion nonce is stale.
+      await t.mutation(internal.bottles.watchBottleDeletion, {
+        bottleId,
+        expectedUserId: user.userId,
+        expectedDeletingAt: deletionNonce,
+      });
+      const afterStaleWatchdog = await t.run(async (ctx) => ctx.db.get(bottleId));
+      expect(afterStaleWatchdog?.deletingAt).toBe(retried?.deletingAt);
+      expect(afterStaleWatchdog?.cleanupJobId).toBe(retried?.cleanupJobId);
+
+      await t.finishAllScheduledFunctions(vi.runAllTimers);
+      expect(await t.run(async (ctx) => ctx.db.get(bottleId))).toBeNull();
     } finally {
       vi.useRealTimers();
     }

@@ -1,10 +1,12 @@
 import { internal } from "./_generated/api";
+import type { Id } from "./_generated/dataModel";
 import { internalMutation, mutation, query } from "./_generated/server";
+import type { MutationCtx } from "./_generated/server";
 import { v } from "convex/values";
 import { getActiveOwnedBottle, getOptionalUserId, getOwnedDoc, getUserId } from "./helpers";
 import { rateLimiter } from "./rateLimits";
 import { buildPatch } from "./patch";
-import { bottleDocValidator } from "./validators";
+import { bottleDocValidator, failedBottleDeletionValidator } from "./validators";
 
 // ── Validation helpers ────────────────────────────────────────────────────────
 // HTML min/max attributes are client-side only and trivially bypassed, so we
@@ -17,7 +19,64 @@ const MAX_TAG_LENGTH = 50;
 const MAX_TAGS_COUNT = 20;
 const MAX_SIZE_ML = 10_000; // 10 litres ought to be enough for anybody
 const BOTTLE_DELETE_BATCH_SIZE = 50;
-const BOTTLE_DELETE_WATCHDOG_DELAY_MS = 5 * 60 * 1000;
+const BOTTLE_DELETE_WATCHDOG_DELAYS_MS = [
+  5 * 60 * 1000,
+  15 * 60 * 1000,
+  30 * 60 * 1000,
+  60 * 60 * 1000,
+] as const;
+const BOTTLE_DELETE_MAX_ATTEMPTS = BOTTLE_DELETE_WATCHDOG_DELAYS_MS.length;
+const BOTTLE_DELETE_FAILURE_MESSAGE =
+  "Automatic bottle cleanup stopped after the retry limit; retry deletion from the owning account.";
+
+function watchdogDelayForAttempt(attempt: number): number {
+  const index = Math.min(Math.max(attempt, 1), BOTTLE_DELETE_MAX_ATTEMPTS) - 1;
+  return BOTTLE_DELETE_WATCHDOG_DELAYS_MS[index];
+}
+
+function nextDeletionNonce(previousDeletingAt: number): number {
+  return Math.max(Date.now(), previousDeletingAt + 1);
+}
+
+type CleanupArgs = {
+  bottleId: Id<"bottles">;
+  expectedUserId: Id<"users">;
+  expectedDeletingAt: number;
+};
+
+async function scheduleCleanupWatchdog(
+  ctx: MutationCtx,
+  args: CleanupArgs,
+  attempt: number,
+  previousDeadline?: number,
+): Promise<number> {
+  const watchdogDelay = watchdogDelayForAttempt(attempt);
+  const now = Date.now();
+  // Keep a successor after the current deadline so two watchdogs cannot both
+  // observe an active job and return before a later failure.
+  const watchdogAt = Math.max(now + watchdogDelay, (previousDeadline ?? now) + watchdogDelay);
+  await ctx.scheduler.runAfter(watchdogAt - now, internal.bottles.watchBottleDeletion, args);
+  return watchdogAt;
+}
+
+async function scheduleCleanupAttempt(
+  ctx: MutationCtx,
+  bottleId: Id<"bottles">,
+  expectedUserId: Id<"users">,
+  expectedDeletingAt: number,
+  attempt: number,
+) {
+  const args = {
+    bottleId,
+    expectedUserId,
+    expectedDeletingAt,
+  };
+  const cleanupJobId = await ctx.scheduler.runAfter(0, internal.bottles.deleteBottleBatch, args);
+  return {
+    cleanupJobId,
+    cleanupNextRetryAt: await scheduleCleanupWatchdog(ctx, args, attempt),
+  };
+}
 
 function assertValidBottleInput(args: {
   name?: string;
@@ -79,6 +138,36 @@ export const listBottles = query({
       )
       .order("desc")
       .collect();
+  },
+});
+
+/**
+ * Returns the minimum owner-visible record needed to recover a failed delete.
+ * A tombstoned bottle stays out of the normal collection and its other fields
+ * and wear logs remain hidden until the existing delete retry is requested.
+ */
+export const listFailedBottleDeletions = query({
+  args: {},
+  returns: v.array(failedBottleDeletionValidator),
+  handler: async (ctx) => {
+    const userId = await getOptionalUserId(ctx);
+    if (userId === null) {
+      return [];
+    }
+
+    const failedBottles = await ctx.db
+      .query("bottles")
+      .withIndex("by_user_and_cleanup_status", (q) =>
+        q.eq("userId", userId).eq("cleanupStatus", "failed"),
+      )
+      .order("desc")
+      .take(50);
+
+    return failedBottles.map((bottle) => ({
+      _id: bottle._id,
+      name: bottle.name,
+      cleanupStatus: "failed" as const,
+    }));
   },
 });
 
@@ -173,34 +262,32 @@ export const deleteBottle = mutation({
       }
 
       // A failed, canceled, completed-but-stale, or expired job record can be
-      // repaired by a later delete request without changing the tombstone.
+      // repaired by a later owner request. A fresh nonce invalidates delayed
+      // jobs from the exhausted generation before the replacement is queued.
       await rateLimiter.limit(ctx, "deleteBottle", { key: userId, throws: true });
-      const cleanupJobId = await ctx.scheduler.runAfter(0, internal.bottles.deleteBottleBatch, {
-        bottleId: args.bottleId,
-        expectedUserId: userId,
-        expectedDeletingAt: bottle.deletingAt,
+      const deletingAt = nextDeletionNonce(bottle.deletingAt);
+      const cleanup = await scheduleCleanupAttempt(ctx, args.bottleId, userId, deletingAt, 1);
+      await ctx.db.patch(args.bottleId, {
+        deletingAt,
+        cleanupJobId: cleanup.cleanupJobId,
+        cleanupStatus: "pending",
+        cleanupAttempts: 1,
+        cleanupNextRetryAt: cleanup.cleanupNextRetryAt,
+        cleanupLastError: undefined,
       });
-      await ctx.db.patch(args.bottleId, { cleanupJobId });
       return null;
     }
 
     await rateLimiter.limit(ctx, "deleteBottle", { key: userId, throws: true });
     const deletingAt = Date.now();
-    const cleanupJobId = await ctx.scheduler.runAfter(0, internal.bottles.deleteBottleBatch, {
-      bottleId: args.bottleId,
-      expectedUserId: userId,
-      expectedDeletingAt: deletingAt,
+    const cleanup = await scheduleCleanupAttempt(ctx, args.bottleId, userId, deletingAt, 1);
+    await ctx.db.patch(args.bottleId, {
+      deletingAt,
+      cleanupJobId: cleanup.cleanupJobId,
+      cleanupStatus: "pending",
+      cleanupAttempts: 1,
+      cleanupNextRetryAt: cleanup.cleanupNextRetryAt,
     });
-    await ctx.scheduler.runAfter(
-      BOTTLE_DELETE_WATCHDOG_DELAY_MS,
-      internal.bottles.watchBottleDeletion,
-      {
-        bottleId: args.bottleId,
-        expectedUserId: userId,
-        expectedDeletingAt: deletingAt,
-      },
-    );
-    await ctx.db.patch(args.bottleId, { deletingAt, cleanupJobId });
     return null;
   },
 });
@@ -239,7 +326,16 @@ export const deleteBottleBatch = internalMutation({
         internal.bottles.deleteBottleBatch,
         args,
       );
-      await ctx.db.patch(args.bottleId, { cleanupJobId });
+      // Every successor needs its own finite watchdog. The earlier watchdog
+      // may have already observed this batch as active and returned before a
+      // later successor is canceled or fails.
+      const cleanupNextRetryAt = await scheduleCleanupWatchdog(
+        ctx,
+        args,
+        bottle.cleanupAttempts ?? 1,
+        bottle.cleanupNextRetryAt,
+      );
+      await ctx.db.patch(args.bottleId, { cleanupJobId, cleanupNextRetryAt });
     } else {
       await ctx.db.delete(args.bottleId);
     }
@@ -248,9 +344,9 @@ export const deleteBottleBatch = internalMutation({
 });
 
 /**
- * Maintains one delayed recovery chain for each tombstone. Active cleanup is
- * left alone; terminal or missing work is replaced. Once the parent is gone or
- * the nonce no longer matches, the chain stops without touching data.
+ * Replaces terminal or missing cleanup work with bounded exponential-ish
+ * backoff. Once the attempt cap is reached, the tombstone records a visible,
+ * owner-retryable failure and this watchdog chain stops permanently.
  */
 export const watchBottleDeletion = internalMutation({
   args: {
@@ -269,23 +365,60 @@ export const watchBottleDeletion = internalMutation({
       return null;
     }
 
+    if (bottle.cleanupStatus === "failed") {
+      return null;
+    }
+
     const cleanupJob = bottle.cleanupJobId
       ? await ctx.db.system.get("_scheduled_functions", bottle.cleanupJobId)
       : null;
-    if (cleanupJob?.state.kind !== "pending" && cleanupJob?.state.kind !== "inProgress") {
-      const cleanupJobId = await ctx.scheduler.runAfter(
-        0,
-        internal.bottles.deleteBottleBatch,
-        args,
-      );
-      await ctx.db.patch(args.bottleId, { cleanupJobId });
+    if (cleanupJob?.state.kind === "pending" || cleanupJob?.state.kind === "inProgress") {
+      // A watchdog can race the batch before it has scheduled its successor.
+      // Preserve one bounded future observation in that case so a later
+      // cancellation/failure cannot strand this tombstone. The deadline patch
+      // is the idempotency claim that prevents concurrent watchdogs from
+      // creating a scheduler storm.
+      const now = Date.now();
+      if (bottle.cleanupNextRetryAt === undefined || bottle.cleanupNextRetryAt <= now) {
+        const cleanupNextRetryAt = await scheduleCleanupWatchdog(
+          ctx,
+          args,
+          bottle.cleanupAttempts ?? 1,
+          bottle.cleanupNextRetryAt,
+        );
+        await ctx.db.patch(args.bottleId, {
+          cleanupStatus: "pending",
+          cleanupNextRetryAt,
+        });
+      }
+      return null;
     }
 
-    await ctx.scheduler.runAfter(
-      BOTTLE_DELETE_WATCHDOG_DELAY_MS,
-      internal.bottles.watchBottleDeletion,
-      args,
+    const attempts = bottle.cleanupAttempts ?? 1;
+    if (attempts >= BOTTLE_DELETE_MAX_ATTEMPTS) {
+      await ctx.db.patch(args.bottleId, {
+        cleanupStatus: "failed",
+        cleanupLastError: BOTTLE_DELETE_FAILURE_MESSAGE,
+        cleanupNextRetryAt: undefined,
+      });
+      return null;
+    }
+
+    const nextAttempt = attempts + 1;
+    const cleanup = await scheduleCleanupAttempt(
+      ctx,
+      args.bottleId,
+      args.expectedUserId,
+      args.expectedDeletingAt,
+      nextAttempt,
     );
+    await ctx.db.patch(args.bottleId, {
+      cleanupJobId: cleanup.cleanupJobId,
+      cleanupStatus: "pending",
+      cleanupAttempts: nextAttempt,
+      cleanupNextRetryAt: cleanup.cleanupNextRetryAt,
+      cleanupLastError: undefined,
+    });
     return null;
   },
 });
